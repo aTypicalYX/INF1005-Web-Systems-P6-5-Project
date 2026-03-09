@@ -1489,3 +1489,13 @@ body::after {
     font-size: 0.85rem;
     margin-bottom: 2rem;
 }
+
+/* ============================================================
+   8. EDIT-PROFILE PAGE (edit-profile.php)
+   ============================================================ */
+
+.card-profile-preview {
+    position: relative;
+    width: 320px;
+    height: 420px;
+}
