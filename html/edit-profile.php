@@ -13,6 +13,68 @@ if (!function_exists('h')) {
 }
 
 // ══════════════════════════════════════════════════════
+// Form Submission
+// ══════════════════════════════════════════════════════
+// ── Getting List of Interests ──
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $firstName = $_POST['first_name'] ?? '';
+    $lastName  = $_POST['last_name'] ?? '';
+    $age       = $_POST['age'] ?? null;
+    $gender    = $_POST['gender'] ?? '';
+    $pronouns  = $_POST['pronouns'] ?? '';
+    $location  = $_POST['location'] ?? '';
+    $occupation = $_POST['occupation'] ?? '';
+    $height    = $_POST['height'] ?? null;
+    $bio       = $_POST['biography'] ?? '';
+    $education = $_POST['education'] ?? '';
+    $loveLanguage = $_POST['love_language'] ?? '';
+    $interests = $_POST['interests'] ?? ''; // comma-separated IDs
+    $pets      = $_POST['pets'] ?? '';
+    $workout   = $_POST['workout'] ?? '';
+    $socialMedia = $_POST['social_media'] ?? '';
+    $topArtists  = $_POST['top_artists'] ?? '';
+    $lookingFor  = $_POST['looking_for'] ?? '';
+    $showMe      = $_POST['show_me'] ?? '';
+    $ageMin      = $_POST['age_min'] ?? null;
+    $ageMax      = $_POST['age_max'] ?? null;
+
+    try {
+        // 1️⃣ Update profile table
+        $stmt = $pdo->prepare("
+            UPDATE profile SET 
+                age = ?, gender = ?, pronouns = ?, location = ?, occupation = ?, height = ?, 
+                biography = ?, education = ?, love_language = ?, pets = ?, workout = ?, social_media = ?, favourite_song = ?
+            WHERE user_id = ?
+        ");
+        $stmt->execute([$age, $gender, $pronouns, $location, $occupation, $height, $bio, $education, $loveLanguage, $pets, $workout, $socialMedia, $topArtists, $currentUser]);
+
+        // 2️⃣ Update preferences table
+        $stmt = $pdo->prepare("
+            UPDATE preferences SET 
+                looking_for = ?, show_me = ?, age_min = ?, age_max = ?
+            WHERE user_id = ?
+        ");
+        $stmt->execute([$lookingFor, $showMe, $ageMin, $ageMax, $currentUser]);
+
+        // 3️⃣ Update interests (delete old ones first)
+        $pdo->prepare("DELETE FROM user_interests WHERE user_id = ?")->execute([$currentUser]);
+
+        if ($interests) {
+            $interestIds = explode(',', $interests);
+            $stmt = $pdo->prepare("INSERT INTO user_interests (user_id, interest_id) VALUES (?, ?)");
+            foreach ($interestIds as $id) {
+                $stmt->execute([$currentUser, $id]);
+            }
+        }
+
+        $successMessage = "Profile updated successfully!";
+    } catch (Exception $e) {
+        $errorMessage = "Error saving profile: " . $e->getMessage();
+    }
+}
+
+// ══════════════════════════════════════════════════════
 // DB Queries
 // ══════════════════════════════════════════════════════
 // ── Getting List of Interests ──
@@ -315,7 +377,7 @@ require_once 'includes/header.php';
                             <span class="tag">Coffee</span>
                             <span class="tag">Art</span>
                         </div>
-                        <p><?= h($profile['bio']) ?></p>
+                        <p><?= h($profile['biography']) ?></p>
                     </div>
                 </div>
             </div>

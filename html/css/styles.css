@@ -353,6 +353,43 @@ body::after {
     font-weight: 600;
 }
 
+
+/* ── How It Works Section (Home Page) ── */
+.step-card {
+    background: #FFFFFF;
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    height: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+    border: 1px solid rgba(255, 74, 122, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.step-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 40px rgba(255, 74, 122, 0.12);
+}
+
+.step-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1.2rem;
+    display: inline-block;
+}
+
+.step-card h4 {
+    font-weight: 800;
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+.step-card p {
+    color: #666;
+    line-height: 1.6;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
 /* ============================================================
    4. PROFILES / DISCOVER PAGE (profiles.php)
    ============================================================ */

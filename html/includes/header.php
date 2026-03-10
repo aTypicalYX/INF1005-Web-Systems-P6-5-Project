@@ -36,6 +36,7 @@ function navClass(string $page, string $active): string {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/585cd70d2d.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="css/styles.css?v=<?= time(); ?>">
     <?= isset($extraHead) ? $extraHead : '' ?>
 </head>
@@ -87,23 +88,23 @@ function navClass(string $page, string $active): string {
                             <ul class="dropdown-menu dropdown-menu-end mt-2 mobile-dropdown">
                                 <li>
                                     <a class="dropdown-item" href="edit-profile.php">
-                                        <span aria-hidden="true">👤</span> My Profile
+                                        <span aria-hidden="true"><i class="fa-solid fa-address-book" style="color: var(--primary-pink);"></i></span> My Profile
                                     </a>
                                 </li>
                                 <li>
                                     <a class="dropdown-item" href="matches.php">
-                                        <span aria-hidden="true">💛</span> My Matches
+                                        <span aria-hidden="true"><i class="fa-solid fa-heart" style="color: var(--primary-pink);"></i></span> My Matches
                                     </a>
                                 </li>
                                 <li>
                                     <a class="dropdown-item" href="messages.php">
-                                        <span aria-hidden="true">💬</span> Messages
+                                        <span aria-hidden="true"><i class="fa-solid fa-comment" style="color: var(--primary-pink);"></i></span> Messages
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <a class="dropdown-item text-danger" href="logout.php">
-                                        <span aria-hidden="true">🚪</span> Logout
+                                        <span aria-hidden="true"><i class="fa-solid fa-arrow-right" style="color: var(--primary-pink);"></i></span> Logout
                                     </a>
                                 </li>
                             </ul>

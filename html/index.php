@@ -19,8 +19,8 @@ unset($_SESSION['success']);
 
         <div class="hero-wrapper">
             <div class="hero-text">
-                <h1>Swipe Less.<br>Connect More.</h1>
-                <p>No games, no ghosting, just genuine vibes with people who actually get you</p>
+                <h1>Swipe Less.<br>Connect More.</h1> 
+                <p>No games, no ghosting, just genuine vibes with people who actually get you<i class="fa-solid fa-heart fa-bounce" style="color: var(--primary-pink);"></i></p>
                 <?php if (!isset($_SESSION['username'])): ?>
                     <a href="signup.php" class="btn-solid-custom" style="padding: 1rem 2.5rem; font-size: 1.1rem;">Join Now &rarr;</a>
                 <?php endif; ?>
@@ -43,6 +43,38 @@ unset($_SESSION['success']);
                 </div>
             </div>
         </div>
+
+        <section class="how-it-works my-5 pt-4 pb-5">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold mt-2 display-6" style="color: var(--text-dark);">How S³ works</h2>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-icon" aria-hidden="true">🌟</div>
+                    <h4>Create your profile</h4>
+                    <p>Tell us about yourself — your values, interests, what you're looking for, and what makes you unique. The more you share, the better your matches.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-icon" aria-hidden="true">💫</div>
+                    <h4>Discover & Swipe</h4>
+                    <p>Browse curated profiles or use our swipe interface. Like, pass, or super-like profiles to signal your interest level clearly.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-icon" aria-hidden="true">💬</div>
+                    <h4>Connect & Chat</h4>
+                    <p>When you both like each other, it's a match! Start a conversation, share more about yourselves, and take things at your own pace.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
 
     </main>

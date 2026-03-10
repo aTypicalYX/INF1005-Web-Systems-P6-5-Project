@@ -13,7 +13,7 @@ require_once 'includes/header.php';
 
     <section class="about-hero">
         <span class="team-badge">INF1005 Project • Group 5</span>
-        <h1>Built for SITizens.<br>Designed for <em>real connection.</em></h1>
+        <h1>Built for SITizens.<br>Designed for <em>real connection.</em><i class="fa-solid fa-heart fa-bounce" style="color: var(--primary-pink);"></i></h1>
         <p class="lead text-muted mx-auto mt-3" style="max-width: 600px;">
             University life is more than just lectures, lab sessions, and chasing deadlines. It's about the people you meet along the way.
         </p>
