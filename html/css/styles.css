@@ -435,7 +435,6 @@ body::after {
     border-radius: 50px;
     margin: 0 0.8rem;
     box-shadow: 0 4px 15px rgba(0,0,0,0.02);
-    border: 1px solid rgba(255, 74, 122, 0.15);
     cursor: default;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
