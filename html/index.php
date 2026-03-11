@@ -44,6 +44,30 @@ unset($_SESSION['success']);
             </div>
         </div>
 
+        <section class="marquee-section my-5">
+            <p class="text-center text-muted fw-bold mb-4" style="font-size: 1.25rem; letter-spacing: 1px;">POPULAR VIBES ON CAMPUS</p>
+            <div class="marquee-container">
+                <div class="marquee-content">
+                    <span class="marquee-tag">#InformationSecurity</span>
+                    <span class="marquee-tag">#Valorant</span>
+                    <span class="marquee-tag">#LateNightSupper</span>
+                    <span class="marquee-tag">#PunggolCampus</span>
+                    <span class="marquee-tag">#Hackathons</span>
+                    <span class="marquee-tag">#CoffeeAddicts</span>
+                    <span class="marquee-tag">#StudyBuddies</span>
+                    <span class="marquee-tag">#MobileLegends</span>
+                    <span class="marquee-tag">#InformationSecurity</span>
+                    <span class="marquee-tag">#Valorant</span>
+                    <span class="marquee-tag">#LateNightSupper</span>
+                    <span class="marquee-tag">#PunggolCampus</span>
+                    <span class="marquee-tag">#Hackathons</span>
+                    <span class="marquee-tag">#CoffeeAddicts</span>
+                    <span class="marquee-tag">#StudyBuddies</span>
+                    <span class="marquee-tag">#MobileLegends</span>
+                </div>
+            </div>
+        </section>
+
         <section class="how-it-works my-5 pt-4 pb-5">
         <div class="text-center mb-5">
             <h2 class="fw-bold mt-2 display-6" style="color: var(--text-dark);">How S³ works</h2>
@@ -52,7 +76,7 @@ unset($_SESSION['success']);
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="step-card">
-                    <div class="step-icon" aria-hidden="true">🌟</div>
+                    <div class="step-icon" aria-hidden="true"><i class="fa-solid fa-plus" style="color: var(--primary-pink);"></i></div>
                     <h4>Create your profile</h4>
                     <p>Tell us about yourself — your values, interests, what you're looking for, and what makes you unique. The more you share, the better your matches.</p>
                 </div>
@@ -60,7 +84,7 @@ unset($_SESSION['success']);
             
             <div class="col-md-4">
                 <div class="step-card">
-                    <div class="step-icon" aria-hidden="true">💫</div>
+                    <div class="step-icon" aria-hidden="true"><i class="fa-solid fa-magnifying-glass" style="color: var(--primary-pink);"></i></div>
                     <h4>Discover & Swipe</h4>
                     <p>Browse curated profiles or use our swipe interface. Like, pass, or super-like profiles to signal your interest level clearly.</p>
                 </div>
@@ -68,7 +92,7 @@ unset($_SESSION['success']);
             
             <div class="col-md-4">
                 <div class="step-card">
-                    <div class="step-icon" aria-hidden="true">💬</div>
+                    <div class="step-icon" aria-hidden="true"><i class="fa-solid fa-comment-dots" style="color: var(--primary-pink);"></i></div>
                     <h4>Connect & Chat</h4>
                     <p>When you both like each other, it's a match! Start a conversation, share more about yourselves, and take things at your own pace.</p>
                 </div>

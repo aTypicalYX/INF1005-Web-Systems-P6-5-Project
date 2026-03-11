@@ -186,6 +186,8 @@ body::after {
         flex-direction: column;
         text-align: center;
         margin-top: 2rem;
+        flex: none;
+        gap: 2rem;
     }
     
     .hero-text {
@@ -265,13 +267,15 @@ body::after {
     line-height: 1.4;
 }
 
-/* ── Stacked Profile Cards (Visual Graphic) ── */
+/* Stacked Profile Cards */
 .hero-visual {
     flex: 1;
     display: flex;
     justify-content: center;
     position: relative;
     height: 500px;
+    min-height: 500px;
+    width: 100%;
 }
 
 /* The container holding the absolute positioned cards */
@@ -388,6 +392,65 @@ body::after {
     line-height: 1.6;
     margin: 0;
     font-size: 0.95rem;
+}
+
+
+/* ── Featured Interests Marquee (Home Page) ── */
+.marquee-section {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    padding: 3.5rem 0;
+}
+
+.marquee-container {
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    /* Adds a premium fade-out effect on the left and right edges */
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.marquee-content {
+    display: inline-block;
+    animation: scrollMarquee 25s linear infinite;
+}
+
+/* Pause the scrolling animation if the user hovers over it with their mouse */
+.marquee-container:hover .marquee-content {
+    animation-play-state: paused;
+}
+
+.marquee-tag {
+    display: inline-block;
+    background: #FFFFFF;
+    color: var(--primary-pink);
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.6rem 1.5rem;
+    border-radius: 50px;
+    margin: 0 0.8rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+    border: 1px solid rgba(255, 74, 122, 0.15);
+    cursor: default;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.marquee-tag:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(255, 74, 122, 0.15);
+}
+
+/* The infinite scroll engine */
+@keyframes scrollMarquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); } 
+    /* -50% works perfectly because we duplicated the content. 
+       Once it hits -50%, it instantly snaps back to 0% and the loop is invisible! */
 }
 
 /* ============================================================
@@ -1526,6 +1589,69 @@ body::after {
     font-size: 0.85rem;
     margin-bottom: 2rem;
 }
+
+/* ── Vibe Check Section (About Page) ── */
+.vibe-card {
+    background: var(--card-gradient);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    height: 100%;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle background glow inside the bottom right of the card */
+.vibe-card::after {
+    content: '';
+    position: absolute;
+    bottom: -20%;
+    right: -10%;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    z-index: 0;
+}
+
+.vibe-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+}
+
+/* Frosted glass number badge */
+.vibe-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 45px;
+    height: 45px;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-weight: 800;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    z-index: 1;
+}
+
+.vibe-card h4, 
+.vibe-card p {
+    position: relative;
+    z-index: 1;
+}
+
+.vibe-card p {
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
 
 /* ============================================================
    8. EDIT-PROFILE PAGE (edit-profile.php)

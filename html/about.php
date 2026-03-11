@@ -82,6 +82,40 @@ require_once 'includes/header.php';
         </div>
     </section>
 
+    <section class="vibe-check-section mb-5 pb-5">
+        <div class="text-center mb-5">
+            <span class="text-uppercase fw-bold" style="color: var(--primary-pink); letter-spacing: 1px; font-size: 0.9rem;">The Vibe Check</span>
+            <h2 class="fw-bold mt-2" style="color: var(--text-dark);">Our Community Guidelines</h2>
+            <p class="text-muted mx-auto mt-3" style="max-width: 600px;">To keep S³ a safe and fun space for all SITizens, we ask that everyone follows these three simple rules.</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="vibe-card">
+                    <div class="vibe-number">01</div>
+                    <h4 class="fw-bold mb-3">Bring your real self.</h4>
+                    <p class="mb-0">No fake personas, no catfishing, just genuine students. Authenticity is the fastest way to find people who actually match your energy.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="vibe-card">
+                    <div class="vibe-number">02</div>
+                    <h4 class="fw-bold mb-3">Respect the grind.</h4>
+                    <p class="mb-0">We are all students. Understand that midterms happen, project deadlines loom, and replies might be slow. Be patient and kind.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="vibe-card">
+                    <div class="vibe-number">03</div>
+                    <h4 class="fw-bold mb-3">Shoot your shot, respectfully.</h4>
+                    <p class="mb-0">Whether you're looking for a romantic date, a gym buddy, or someone to survive a group project with, always communicate clearly and respectfully.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <?php if (!isset($_SESSION['user_id'])): ?>
     <section class="text-center mb-5 pb-5">
         <h3 class="fw-bold mb-3" style="color: var(--text-dark);">Ready to meet your next coffee buddy?</h3>
