@@ -17,10 +17,68 @@ $pageTitle  = 'Discover';
 // ── Fetch profiles from DB ──
 $currentUser = $_SESSION['user_id'];
 $profiles    = [];
+// Fetch current user preferences
+$prefs  = null;
+$showMe = null;
+$ageMin = null;
+$ageMax = null;
 
 require_once '/var/www/config/db.php';
 
 try {
+    $prefStmt = $pdo->prepare("
+        SELECT show_me, age_min, age_max
+        FROM preferences
+        WHERE user_id = ?
+        LIMIT 1
+    ");
+    $prefStmt->execute([$currentUser]);
+    $prefs = $prefStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($prefs) {
+        $showMeRaw = strtolower(trim($prefs['show_me'] ?? ''));
+        $showMe    = ($showMeRaw !== '' && $showMeRaw !== 'everyone')
+            ? ucfirst($showMeRaw)  // converts back to 'Male'/'Female' to match what's stored in profile.gender
+            : null;
+
+        $ageMin = (!empty($prefs['age_min']) && (int)$prefs['age_min'] > 0)
+            ? (int)$prefs['age_min']
+            : null;
+        $ageMax = (!empty($prefs['age_max']) && (int)$prefs['age_max'] > 0)
+            ? (int)$prefs['age_max']
+            : null;
+    }
+} catch (Exception $e) {
+    // if no preferences found
+    $prefs = null;
+}
+
+// Build profiles query dynamically based on preferences
+try {
+    $conditions = [
+        "u.id != ?",
+        "u.id NOT IN (SELECT swiped_id FROM swipes WHERE swiper_id = ?)"
+    ];
+    $params = [$currentUser, $currentUser];
+
+    // Gender filter - male / female
+    if ($showMe !== null) {
+         $conditions[] = "p.gender = ?";
+         $params[]     = $showMe;
+    }
+
+    // Age range filter — apply whichever bounds are set
+    if ($ageMin !== null) {
+        $conditions[] = "p.age >= ?";
+        $params[]     = $ageMin;
+    }
+    if ($ageMax !== null) {
+        $conditions[] = "p.age <= ?";
+        $params[]     = $ageMax;
+    }
+
+    $where = implode(' AND ', $conditions);
+
     $stmt = $pdo->prepare("
         SELECT u.id,
                p.display_name  AS name,
@@ -31,14 +89,11 @@ try {
                p.main_image    AS profile_pic
         FROM users u
         JOIN profile p ON p.user_id = u.id
-        WHERE u.id != ?
-        AND u.id NOT IN (
-            SELECT swiped_id FROM swipes WHERE swiper_id = ?
-        )
+        WHERE {$where}
         ORDER BY RAND()
         LIMIT 20
     ");
-    $stmt->execute([$currentUser, $currentUser]);
+    $stmt->execute($params);
     $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $profiles = [];
