@@ -453,6 +453,39 @@ body::after {
        Once it hits -50%, it instantly snaps back to 0% and the loop is invisible! */
 }
 
+
+/* ── Trust & Safety Banner (Home Page) ── */
+.trust-feature {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.3s ease;
+}
+
+.trust-icon {
+    width: 64px;
+    height: 64px;
+    background: rgba(255, 74, 122, 0.08);
+    color: var(--primary-pink);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    margin-bottom: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+/* Interactive hover effect */
+.trust-feature:hover .trust-icon {
+    transform: scale(1.1) rotate(5deg);
+    background: var(--primary-pink);
+    color: white;
+    box-shadow: 0 8px 20px rgba(255, 74, 122, 0.25);
+}
+
+
+
 /* ============================================================
    4. PROFILES / DISCOVER PAGE (profiles.php)
    ============================================================ */
@@ -1650,6 +1683,51 @@ body::after {
     color: rgba(255, 255, 255, 0.85);
     line-height: 1.6;
     font-size: 0.95rem;
+}
+
+
+/* ── Myth vs Reality Accordion (About Page) ── */
+.custom-accordion .accordion-item {
+    border: 1px solid rgba(255, 74, 122, 0.15);
+    border-radius: 16px !important;
+    margin-bottom: 1.2rem;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+}
+
+.custom-accordion .accordion-button {
+    padding: 1.25rem 1.5rem;
+    background-color: #FFFFFF;
+    color: var(--text-dark);
+    font-size: 1.05rem;
+    box-shadow: none; /* Removes the harsh default bootstrap focus shadow */
+}
+
+/* Custom styling for when an accordion tab is actively clicked/focused */
+.custom-accordion .accordion-button:focus {
+    border-color: rgba(255, 74, 122, 0.3);
+    box-shadow: 0 0 0 0.25rem rgba(255, 74, 122, 0.15);
+}
+
+/* Custom styling for an OPEN accordion tab */
+.custom-accordion .accordion-button:not(.collapsed) {
+    background-color: #FFF0F5;
+    color: var(--primary-pink);
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.05);
+}
+
+.custom-accordion .accordion-body {
+    padding: 1.5rem;
+    background-color: #FFFFFF;
+    color: #666;
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+/* Highlights the "Reality" text in your primary pink */
+.custom-accordion .accordion-body strong {
+    color: var(--primary-pink);
+    font-weight: 800;
 }
 
 

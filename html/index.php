@@ -45,7 +45,7 @@ unset($_SESSION['success']);
         </div>
 
         <section class="marquee-section my-5">
-            <p class="text-center text-muted fw-bold mb-4" style="font-size: 1.25rem; letter-spacing: 1px;">POPULAR VIBES ON CAMPUS</p>
+            <h2 class="text-center fw-bold mb-4">POPULAR VIBES ON CAMPUS</h2>
             <div class="marquee-container">
                 <div class="marquee-content">
                     <span class="marquee-tag">#InformationSecurity</span>
@@ -101,47 +101,47 @@ unset($_SESSION['success']);
     </section>
 
 
+    <section class="trust-banner mt-4 mb-5 pb-4">
+        <div class="container text-center px-4 py-5">
+            <div class="row g-4">
+                
+                <div class="col-md-4 px-4">
+                    <div class="trust-feature">
+                        <div class="trust-icon">
+                            <i class="bi bi-mortarboard-fill"></i>
+                        </div>
+                        <h5 class="fw-bold" style="color: var(--text-dark);">SIT Exclusive</h5>
+                        <p class="text-muted small mb-0">Requires a verified <strong>@sit.singaporetech.edu.sg</strong> email address to join the community.</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 px-4">
+                    <div class="trust-feature">
+                        <div class="trust-icon">
+                            <i class="bi bi-shield-lock-fill"></i>
+                        </div>
+                        <h5 class="fw-bold" style="color: var(--text-dark);">Zero Creep Policy</h5>
+                        <p class="text-muted small mb-0">Robust reporting tools and immediate bans for bad behavior to keep the environment respectful.</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 px-4">
+                    <div class="trust-feature">
+                        <div class="trust-icon">
+                            <i class="bi bi-chat-dots-fill"></i>
+                        </div>
+                        <h5 class="fw-bold" style="color: var(--text-dark);">Anti-Ghosting Nudges</h5>
+                        <p class="text-muted small mb-0">Smart, gentle reminders to encourage active conversations and real, meaningful connections.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+
     </main>
  
 
 
-   <footer class="custom-footer">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4 mb-4 mb-md-0">
-                    <a href="index.php" class="brand-logo d-inline-block mb-3">S³</a>
-                    <p class="text-muted pe-md-5">A safe, fun space to meet people who share your vibe. Based in Singapore.</p>
-                </div>
-                
-                <div class="col-md-2 col-6 mb-4 mb-md-0">
-                    <h5 class="footer-heading">Explore</h5>
-                    <a href="#" class="footer-link">Browse Profiles</a>
-                    <a href="#" class="footer-link">Pricing</a>
-                    <a href="login.php" class="footer-link">Sign In</a>
-                </div>
-                
-                <div class="col-md-2 col-6 mb-4 mb-md-0">
-                    <h5 class="footer-heading">Company</h5>
-                    <a href="about.php" class="footer-link">About Us</a>
-                    <a href="#" class="footer-link">Blog</a>
-                    <a href="#" class="footer-link">Careers</a>
-                </div>
-                
-                <div class="col-md-3 col-12">
-                    <h5 class="footer-heading">Support</h5>
-                    <a href="#" class="footer-link">Safety Centre</a>
-                    <a href="#" class="footer-link">Privacy Policy</a>
-                    <a href="#" class="footer-link">Terms of Service</a>
-                </div>
-            </div>
-            
-            <hr class="footer-divider">
-            
-            <div class="text-center text-muted" style="font-size: 0.9rem;">
-                <p class="mb-0">&copy; 2026 Singapore Singles Society S³. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-</body>
+<?php require_once 'includes/footer.php'; ?>

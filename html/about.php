@@ -116,6 +116,63 @@ require_once 'includes/header.php';
         </div>
     </section>
 
+    <section class="faq-section mb-5 pb-5">
+        <div class="text-center mb-5">
+            <span class="text-uppercase fw-bold" style="color: var(--primary-pink); letter-spacing: 1px; font-size: 0.9rem;">FAQ</span>
+            <h2 class="fw-bold mt-2" style="color: var(--text-dark);">Myth vs. Reality</h2>
+            <p class="text-muted mx-auto mt-3" style="max-width: 600px;">Still on the fence? Let's clear up some common misconceptions about joining the S³ community.</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="accordion custom-accordion" id="mythAccordion">
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                <span class="fw-bold">Myth: It's only for dating.</span>
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#mythAccordion">
+                            <div class="accordion-body">
+                                <strong>Reality:</strong> Nope! While you absolutely can find romance, S³ can also be used for finding FYP project mates, cafe buddies, or people to game with at night.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                <span class="fw-bold">Myth: I have to make all my personal info public.</span>
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#mythAccordion">
+                            <div class="accordion-body">
+                                <strong>Reality:</strong> You are in complete control of your vibe. Share as much or as little as you want using our custom tag system. We only show what you explicitly choose to feature on your profile.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                <span class="fw-bold">Myth: It's going to be awkward if I see them on campus.</span>
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#mythAccordion">
+                            <div class="accordion-body">
+                                <strong>Reality:</strong> That's actually the best part! Knowing you share the exact same vibe or interests before you even bump into them at the library removes the awkwardness and skips straight to the good part.
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+
     <?php if (!isset($_SESSION['user_id'])): ?>
     <section class="text-center mb-5 pb-5">
         <h3 class="fw-bold mb-3" style="color: var(--text-dark);">Ready to meet your next coffee buddy?</h3>
