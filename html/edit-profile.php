@@ -12,6 +12,10 @@ if (!function_exists('h')) {
     }
 }
 
+require_once '/var/www/config/db.php';
+//$currentUser = $_SESSION['user_id'];
+$currentUser = 11; // Jonathan Profile
+
 // ══════════════════════════════════════════════════════
 // Form Submission
 // ══════════════════════════════════════════════════════
@@ -33,23 +37,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pets      = $_POST['pets'] ?? '';
     $workout   = $_POST['workout'] ?? '';
     $socialMedia = $_POST['social_media'] ?? '';
-    $topArtists  = $_POST['top_artists'] ?? '';
+    $favSong = $_POST['favourite_song'] ?? '';
     $lookingFor  = $_POST['looking_for'] ?? '';
     $showMe      = $_POST['show_me'] ?? '';
     $ageMin      = $_POST['age_min'] ?? null;
     $ageMax      = $_POST['age_max'] ?? null;
 
     try {
-        // 1️⃣ Update profile table
+        // Update profile table
         $stmt = $pdo->prepare("
             UPDATE profile SET 
                 age = ?, gender = ?, pronouns = ?, location = ?, occupation = ?, height = ?, 
                 biography = ?, education = ?, love_language = ?, pets = ?, workout = ?, social_media = ?, favourite_song = ?
             WHERE user_id = ?
         ");
-        $stmt->execute([$age, $gender, $pronouns, $location, $occupation, $height, $bio, $education, $loveLanguage, $pets, $workout, $socialMedia, $topArtists, $currentUser]);
+        $stmt->execute([$age, $gender, $pronouns, $location, $occupation, $height, $bio, $education, $loveLanguage, $pets, $workout, $socialMedia, $favSong, $currentUser]);
 
-        // 2️⃣ Update preferences table
+        // Update preferences table
         $stmt = $pdo->prepare("
             UPDATE preferences SET 
                 looking_for = ?, show_me = ?, age_min = ?, age_max = ?
@@ -57,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ");
         $stmt->execute([$lookingFor, $showMe, $ageMin, $ageMax, $currentUser]);
 
-        // 3️⃣ Update interests (delete old ones first)
+        // Update interests (delete old ones first)
         $pdo->prepare("DELETE FROM user_interests WHERE user_id = ?")->execute([$currentUser]);
 
         if ($interests) {
@@ -79,7 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ══════════════════════════════════════════════════════
 // ── Getting List of Interests ──
 
-require_once '/var/www/config/db.php';
 try {
     $stmt = $pdo->query("SELECT id, name FROM interests ORDER BY name");
     $allInterests = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -87,10 +90,7 @@ try {
     $allInterests = [];
 }
 
-
 // ── Fetch profiles from DB ──
-//$currentUser = $_SESSION['user_id'];
-$currentUser = 11; // Jonathan Profile
 try {
     $stmt = $pdo->prepare("
         SELECT 
@@ -155,13 +155,13 @@ require_once 'includes/header.php';
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">First Name</label>
-                                        <input type="text" class="form-control" id="first_name"
+                                        <input type="text" class="form-control" id="first_name" name="first_name"
                                             value="<?= h($profile['first_name']) ?>">
                                     </div>
 
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Last Name</label>
-                                        <input type="text" class="form-control" id="last_name"
+                                        <input type="text" class="form-control" id="last_name" name="last_name"
                                             value="<?= h($profile['last_name']) ?>">
                                     </div>
                                 </div>
@@ -169,13 +169,13 @@ require_once 'includes/header.php';
 
                             <div class="mb-3">
                                 <label class="form-label">Age</label>
-                                <input type="number" class="form-control" id="age"
+                                <input type="number" class="form-control" id="age" name="age"
                                     value="<?= h((string)$profile['age']) ?>">
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Gender</label>
-                                <select class="form-control" id="gender">
+                                <select class="form-control" id="gender" name="gender">
                                     <option <?= $profile['gender']=='Male'?'selected':'' ?>>Male</option>
                                     <option <?= $profile['gender']=='Female'?'selected':'' ?>>Female</option>
                                     <option <?= $profile['gender']=='Other'?'selected':'' ?>>Other</option>
@@ -184,25 +184,25 @@ require_once 'includes/header.php';
 
                             <div class="mb-3">
                                 <label class="form-label">Pronouns</label>
-                                <input type="text" class="form-control" id="pronouns"
+                                <input type="text" class="form-control" id="pronouns" name="pronouns"
                                     value="<?= h($profile['pronouns']) ?>">
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Location</label>
-                                <input type="text" class="form-control" id="location"
+                                <input type="text" class="form-control" id="location" name="location"
                                     value="<?= h($profile['location']) ?>">
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Occupation</label>
-                                <input type="text" class="form-control" id="occupation"
+                                <input type="text" class="form-control" id="occupation" name="occupation"
                                     value="<?= h($profile['occupation']) ?>">
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Height (cm)</label>
-                                <input type="number" class="form-control" id="height"
+                                <input type="number" class="form-control" id="height" name="height"
                                     value="<?= h($profile['height']) ?>">
                             </div>
                         </div>
@@ -216,18 +216,19 @@ require_once 'includes/header.php';
 
                              <div class="mb-3">
                                 <label class="form-label">Bio</label>
-                                <textarea class="form-control" id="bio" rows="4"><?= h($profile['biography']) ?></textarea>
+                                <textarea class="form-control" id="bio" name="biography"
+                                    ows="4"><?= h($profile['biography']) ?></textarea>
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Education</label>
-                                <input type="text" class="form-control" id="education"
+                                <input type="text" class="form-control" id="education" name="education"
                                     value="<?= h($profile['education']) ?>">
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Love Language</label>
-                                <select class="form-control" id="love_language">
+                                <select class="form-control" id="love_language" name="love_language">
                                     <option <?= $profile['love_language']=='Words of Affirmation'?'selected':'' ?>>Words of Affirmation</option>
                                     <option <?= $profile['love_language']=='Acts of Service'?'selected':'' ?>>Acts of Service</option>
                                     <option <?= $profile['love_language']=='Receiving Gifts'?'selected':'' ?>>Receiving Gifts</option>
@@ -242,17 +243,27 @@ require_once 'includes/header.php';
                                 <!-- Selected interests -->
                                 <div id="selected-interests" class="interests-input-container mb-2">
                                     <?php
-                                    $tags = explode(',', $profile['interests']);
-                                    foreach ($tags as $tag):
-                                        $trimmed = trim($tag);
-                                        if (!$trimmed) continue;
-                                    ?>
-                                        <span class="tag-span">
+                                        $tags = explode(',', $profile['interests']);
+                                        foreach ($tags as $tag):
+                                            $trimmed = trim($tag);
+                                            if (!$trimmed) continue;
+                                            // Find the interest ID by matching the name
+                                            $interestId = '';
+                                            foreach ($allInterests as $int) {
+                                                if ($int['name'] === $trimmed) {
+                                                    $interestId = $int['id'];
+                                                    break;
+                                                }
+                                            }
+                                        ?>
+                                        <span class="tag-span" data-id="<?= h((string)$interestId) ?>">
                                             <?= h($trimmed) ?>
                                             <span class="remove-tag" aria-label="Remove tag">×</span>
                                         </span>
                                     <?php endforeach; ?>
                                 </div>
+
+                                <input type="hidden" id="interests-hidden" name="interests" value="">
 
                                 <!-- Dropdown of all interests -->
                                 <select id="interest-select" class="form-control">
@@ -277,7 +288,7 @@ require_once 'includes/header.php';
 
                             <div class="mb-3">
                                 <label class="form-label">Pets</label>
-                                <select class="form-control" id="pets">
+                                <select class="form-control" id="pets" name="pets">
                                     <option <?= $profile['pets']=='None'?'selected':'' ?>>None</option>
                                     <option <?= $profile['pets']=='Dog'?'selected':'' ?>>Dog</option>
                                     <option <?= $profile['pets']=='Cat'?'selected':'' ?>>Cat</option>
@@ -287,7 +298,7 @@ require_once 'includes/header.php';
 
                             <div class="mb-3">
                                 <label class="form-label">Workout</label>
-                                <select class="form-control" id="workout">
+                                <select class="form-control" id="workout" name="workout">
                                     <option <?= $profile['workout']=='Never'?'selected':'' ?>>Never</option>
                                     <option <?= $profile['workout']=='Sometimes'?'selected':'' ?>>Sometimes</option>
                                     <option <?= $profile['workout']=='Regularly'?'selected':'' ?>>Regularly</option>
@@ -296,7 +307,7 @@ require_once 'includes/header.php';
 
                             <div class="mb-3">
                                 <label class="form-label">Social Media Usage</label>
-                                <select class="form-control" id="social_media">
+                                <select class="form-control" id="social_media" name="social_media">
                                     <option <?= $profile['social_media']=='Rarely'?'selected':'' ?>>Rarely</option>
                                     <option <?= $profile['social_media']=='Sometimes'?'selected':'' ?>>Sometimes</option>
                                     <option <?= $profile['social_media']=='Very Active'?'selected':'' ?>>Very Active</option>
@@ -304,8 +315,8 @@ require_once 'includes/header.php';
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Top Artists</label>
-                                <input type="text" class="form-control" id="favourite_song"
+                                <label class="form-label">Favourite Song</label>
+                                <input type="text" class="form-control" id="favourite_song" name="favourite_song"
                                     value="<?= h($profile['favourite_song']) ?>">
                             </div>
 
@@ -320,7 +331,7 @@ require_once 'includes/header.php';
 
                             <div class="mb-3">
                                 <label class="form-label">Looking For</label>
-                                <select class="form-control" id="looking_for">
+                                <select class="form-control" id="looking_for" name="looking_for">
                                     <option <?= $profile['looking_for']=='Something Casual'?'selected':'' ?>>Something Casual</option>
                                     <option <?= $profile['looking_for']=='Relationship'?'selected':'' ?>>A Relationship</option>
                                     <option <?= $profile['looking_for']=='Open'?'selected':'' ?>>Open to Anything</option>
@@ -329,7 +340,7 @@ require_once 'includes/header.php';
 
                             <div class="mb-3">
                                 <label class="form-label">Show Me</label>
-                                <select class="form-control" id="show_me">
+                                <select class="form-control" id="show_me" name="show_me">
                                     <option <?= $profile['show_me']=='Male'?'selected':'' ?>>Male</option>
                                     <option <?= $profile['show_me']=='Female'?'selected':'' ?>>Female</option>
                                     <option <?= $profile['show_me']=='Everyone'?'selected':'' ?>>Everyone</option>
@@ -343,6 +354,7 @@ require_once 'includes/header.php';
                                     <div class="col">
                                         <input type="number" class="form-control"
                                             id="age_min"
+                                            name="age_min"
                                             placeholder="Min"
                                             value="<?= h($profile['age_min']) ?>">
                                     </div>
@@ -350,6 +362,7 @@ require_once 'includes/header.php';
                                     <div class="col">
                                         <input type="number" class="form-control"
                                             id="age_max"
+                                            name="age_max"
                                             placeholder="Max"
                                             value="<?= h($profile['age_max']) ?>">
                                     </div>
@@ -442,6 +455,8 @@ require_once 'includes/header.php';
                 updateHiddenInterests();
             }
         });
+
+        updateHiddenInterests();
     </script>
 
 <?php require_once 'includes/footer.php'; ?>
