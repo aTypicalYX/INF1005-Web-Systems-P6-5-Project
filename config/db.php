@@ -47,7 +47,7 @@ try {
 
     //$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    die('Connection failed: ' . $e->getMessage());
+    $pdo = null;
 }
 
 ?>
