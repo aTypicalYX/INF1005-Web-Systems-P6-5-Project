@@ -13,8 +13,8 @@ if (!function_exists('h')) {
 }
 
 require_once '/var/www/config/db.php';
-//$currentUser = $_SESSION['user_id'];
-$currentUser = 11; // Jonathan Profile
+$currentUser = $_SESSION['user_id'];
+//$currentUser = 11; // Jonathan Profile
 
 // ══════════════════════════════════════════════════════
 // Form Submission
