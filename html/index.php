@@ -20,10 +20,14 @@ unset($_SESSION['success']);
         <div class="hero-wrapper">
             <div class="hero-text">
                 <h1>Swipe Less.<br>Connect More.</h1> 
-                <p>No games, no ghosting, just genuine vibes with people who actually get you<i class="fa-solid fa-heart fa-bounce" style="color: var(--primary-pink);"></i></p>
+                <p>No games, no ghosting, just genuine vibes with people who actually get you !<i class="fa-solid fa-heart fa-bounce" style="color: var(--primary-pink);"></i></p>
+                
+                <!--
                 <?php if (!isset($_SESSION['username'])): ?>
                     <a href="signup.php" class="btn-solid-custom" style="padding: 1rem 2.5rem; font-size: 1.1rem;">Join Now &rarr;</a>
                 <?php endif; ?>
+               
+                -->
             </div>
 
             <div class="hero-visual">
