@@ -1,21 +1,20 @@
 <?php
 session_start();
 
-// Set the active page and title for the header
 $activePage = 'about';
-$pageTitle = 'About Us';
+$pageTitle  = 'About Us';
 
 require_once 'includes/header.php';
 ?>
 
-
 <main class="container d-flex flex-column" style="flex: 1;">
 
     <section class="about-hero">
-        <span class="team-badge">INF1005 Project • Group 5</span>
+        <span class="team-badge">INF1005 Project &bull; Group 5</span>
         <h1>Built for SITizens.<br>Designed for <em>real connection.</em><i class="fa-solid fa-heart fa-bounce" style="color: var(--primary-pink);"></i></h1>
         <p class="lead text-muted mx-auto mt-3" style="max-width: 600px;">
-            University life is more than just lectures, lab sessions, and chasing deadlines. It's about the people you meet along the way.
+            University life is more than just lectures, lab sessions, and chasing deadlines.
+            It's about the people you meet along the way.
         </p>
     </section>
 
@@ -24,59 +23,28 @@ require_once 'includes/header.php';
             <div class="col-lg-6 mb-4 mb-lg-0">
                 <h2 class="fw-bold mb-4" style="font-size: 2.5rem; color: var(--text-dark);">Why we created S³</h2>
                 <p class="fs-5 text-muted mb-3" style="line-height: 1.6;">
-                    Singapore Singles Society (S³) was born out of a simple realization: finding your tribe on campus shouldn't be difficult. 
+                    Singapore Singles Society (S³) was born out of a simple realisation: finding your tribe on campus shouldn't be difficult.
                 </p>
                 <p class="text-muted" style="line-height: 1.7;">
-                    Whether you are an ICT-IS student frantically creating cheat sheets for Prof Wing Keong's networking quizzes, or an ICT-SE student trying to not re-mod Prof David's Operating Systems module, we've built a space exclusively for you. No pressure, no ghosting—just genuine vibes.
+                    Whether you are an ICT student looking for hackathon teammates, a design student searching for museum buddies, or just someone hoping to find a romantic connection between classes, S³ bridges the gap across all SIT campuses.
                 </p>
             </div>
-            <div class="col-lg-5 offset-lg-1 text-center">
-                <div style="width: 100%; aspect-ratio: 1/1; border-radius: 30px; background: var(--card-gradient); display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 40px rgba(0,0,0,0.2); transform: rotate(3deg);">
-                    <div class="text-white text-center p-4">
-                        <h3 class="fw-bold mb-0" style="font-size: 3rem;">S³</h3>
-                        <p class="mb-0 opacity-75">Find your vibe.</p>
+            <div class="col-lg-6">
+                <div class="row g-4">
+                    <div class="col-sm-6">
+                        <div class="value-card">
+                            <div class="value-icon"><i class="bi bi-shield-check"></i></div>
+                            <h4 class="fw-bold">Safe Space</h4>
+                            <p class="text-muted mb-0 small">Exclusive to verified SIT students, ensuring a genuine community.</p>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="mb-5 pb-4">
-        <div class="text-center mb-5">
-            <h2 class="fw-bold" style="color: var(--text-dark);">Our Core Pillars</h2>
-        </div>
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="value-card">
-                    <div class="value-icon">
-                        <i class="bi bi-shield-check"></i>
+                    <div class="col-sm-6">
+                        <div class="value-card" style="transform: translateY(20px);">
+                            <div class="value-icon"><i class="bi bi-lightning-charge"></i></div>
+                            <h4 class="fw-bold">Fast Matches</h4>
+                            <p class="text-muted mb-0 small">Our custom tag system pairs you with people who match your exact energy.</p>
+                        </div>
                     </div>
-                    <h4 class="fw-bold mb-3">Safe & Exclusive</h4>
-                    <p class="text-muted mb-0">
-                        Tailored specifically for the campus community. We prioritize a secure, respectful environment where you can truly be yourself without worry.
-                    </p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="value-card">
-                    <div class="value-icon" style="background: #3B0045;">
-                        <i class="bi bi-controller"></i>
-                    </div>
-                    <h4 class="fw-bold mb-3">Vibe-First Matching</h4>
-                    <p class="text-muted mb-0">
-                        We care more about your shared interests than just your photos. Connect over favorite games, study spots, or coffee preferences.
-                    </p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="value-card">
-                    <div class="value-icon" style="background: #7A004B;">
-                        <i class="bi bi-cup-hot"></i>
-                    </div>
-                    <h4 class="fw-bold mb-3">Zero Pressure</h4>
-                    <p class="text-muted mb-0">
-                        Looking for romance? Great. Just want a friendly companion to survive project week with? Also great. Define what you're looking for upfront.
-                    </p>
                 </div>
             </div>
         </div>
@@ -116,6 +84,54 @@ require_once 'includes/header.php';
         </div>
     </section>
 
+    <section class="security-wrapper">
+        <div class="container">
+            <div class="text-center mb-5">
+                <span class="text-uppercase fw-bold" style="color: var(--primary-pink); letter-spacing: 1px; font-size: 0.9rem;">InfoSec Standard</span>
+                <h2 class="fw-bold mt-2 text-white">Your Privacy, Our Priority</h2>
+                <p class="mx-auto mt-3" style="max-width: 600px; color: rgba(255,255,255,0.7);">Built by Information Security students, S³ is engineered from the ground up to protect your data and keep the community secure.</p>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="security-card">
+                        <span class="status-badge status-live">LIVE</span>
+                        <div class="security-icon"><i class="bi bi-building-lock"></i></div>
+                        <h4 class="fw-bold mb-2">Campus Walled Garden</h4>
+                        <p class="mb-0" style="color: rgba(255,255,255,0.75);">Strict <strong>@sit.singaporetech.edu.sg</strong> email verification keeps outsiders out. Only verified SIT students can access the platform.</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="security-card">
+                        <span class="status-badge status-live">LIVE</span>
+                        <div class="security-icon"><i class="bi bi-file-earmark-lock2"></i></div>
+                        <h4 class="fw-bold mb-2">Encrypted Data</h4>
+                        <p class="mb-0" style="color: rgba(255,255,255,0.75);">Your passwords are never stored in plain text. We utilize industry-standard bcrypt hashing algorithms to ensure your credentials are fully encrypted and safe.</p>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="security-card">
+                        <span class="status-badge status-live">LIVE</span>
+                        <div class="security-icon"><i class="bi bi-sliders"></i></div>
+                        <h4 class="fw-bold mb-2">Granular Control</h4>
+                        <p class="mb-0" style="color: rgba(255,255,255,0.75);">You are in full control of your vibe. You decide exactly what tags, photos, and preferences are visible to the public.</p>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="security-card">
+                        <span class="status-badge status-soon">IN DEVELOPMENT</span>
+                        <div class="security-icon"><i class="bi bi-shield-shaded"></i></div>
+                        <h4 class="fw-bold mb-2">Continuous Moderation</h4>
+                        <p class="mb-0" style="color: rgba(255,255,255,0.75);">We are actively developing Two-Factor Authentication (2FA) alongside automated text and image moderation to filter out profanities and inappropriate content.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section class="faq-section mb-5 pb-5">
         <div class="text-center mb-5">
             <span class="text-uppercase fw-bold" style="color: var(--primary-pink); letter-spacing: 1px; font-size: 0.9rem;">FAQ</span>
@@ -135,7 +151,7 @@ require_once 'includes/header.php';
                         </h2>
                         <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#mythAccordion">
                             <div class="accordion-body">
-                                <strong>Reality:</strong> Nope! While you absolutely can find romance, S³ can also be used for finding FYP project mates, cafe buddies, or people to game with at night.
+                                <strong>Reality:</strong> Nope! While you absolutely can find romance, S³ is heavily used for finding FYP project mates, gym buddies, or fellow gamers to queue up with after class.
                             </div>
                         </div>
                     </div>
@@ -161,7 +177,7 @@ require_once 'includes/header.php';
                         </h2>
                         <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#mythAccordion">
                             <div class="accordion-body">
-                                <strong>Reality:</strong> That's actually the best part! Knowing you share the exact same vibe or interests before you even bump into them at the library removes the awkwardness and skips straight to the good part.
+                                <strong>Reality:</strong> That's actually the best part! Knowing you share the exact same vibe before you even bump into them at the library removes the awkwardness and skips straight to the good part.
                             </div>
                         </div>
                     </div>
@@ -171,18 +187,16 @@ require_once 'includes/header.php';
         </div>
     </section>
 
-
-
     <?php if (!isset($_SESSION['user_id'])): ?>
     <section class="text-center mb-5 pb-5">
-        <h3 class="fw-bold mb-3" style="color: var(--text-dark);">Ready to meet your next coffee buddy?</h3>
+        <h3 class="fw-bold mb-3" style="color:var(--text-dark);">Ready to meet your next coffee buddy?</h3>
         <p class="text-muted mb-4">Join hundreds of other students already on S³.</p>
-        <a href="signup.php" class="btn-solid-custom d-inline-block" style="padding: 1rem 2.5rem; font-size: 1.1rem;">Create Your Profile</a>
+        <a href="signup.php" class="btn-solid-custom d-inline-block" style="padding:1rem 2.5rem; font-size:1.1rem;">
+            Create Your Profile
+        </a>
     </section>
     <?php endif; ?>
 
 </main>
 
-<?php
-require_once 'includes/footer.php';
-?>
+<?php require_once 'includes/footer.php'; ?>
