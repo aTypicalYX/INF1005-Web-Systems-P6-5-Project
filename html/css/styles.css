@@ -18,6 +18,7 @@
     --card-gradient: linear-gradient(145deg, #7A004B 0%, #3B0045 100%);
 }
 
+/* Base body styling applied to every page */
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
     background-color: var(--bg-light);
@@ -110,7 +111,7 @@ body::after {
 }
 
 /* ── Reusable Buttons ── */
-/* Hollow button (e.g., Log In) */
+/* Hollow button (e.g., Log In, Back buttons) */
 .btn-outline-custom {
     text-decoration: none;
     color: var(--primary-pink);
@@ -128,7 +129,7 @@ body::after {
     box-shadow: 0 4px 15px rgba(255, 74, 122, 0.2);
 }
 
-/* Filled button (e.g., Join Now) */
+/* Filled button (e.g., Join Now, Save Changes, Submit) */
 .btn-solid-custom {
     text-decoration: none;
     background: var(--primary-pink);
@@ -179,8 +180,6 @@ body::after {
     border-color: rgba(0,0,0,0.1);
     margin: 2rem 0;
 }
-
-
 
 /* ── Mobile Responsiveness (Header & Navbar) ── */
 @media (max-width: 992px) {
@@ -235,7 +234,172 @@ body::after {
 }
 
 /* ============================================================
-   3. HOME PAGE STYLES (index.php)
+   3. SHARED UI ELEMENTS (Cards, Tags, Overlays)
+   Used in index.php, profiles.php, and edit-profile.php
+   ============================================================ */
+
+/* The container holding the absolute positioned cards */
+.card-stack {
+    position: relative;
+    width: 320px;
+    height: 420px;
+}
+
+.profile-card {
+    position: absolute; /* Allows cards to stack on top of each other */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+/* Bottom background card in the graphic */
+.card-back-2 {
+    background: #5A3286;
+    transform: rotate(10deg) translate(20px, 10px);
+    z-index: 1;
+}
+
+/* Middle background card in the graphic */
+.card-back-1 {
+    background: #872A7A;
+    transform: rotate(5deg) translate(10px, 5px);
+    z-index: 2;
+}
+
+/* Top active card */
+.card-front {
+    background: var(--card-gradient);
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; /* Pushes text to the bottom */
+    padding: 2rem;
+    color: white;
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.card-front h3 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.card-front p {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin: 0.5rem 0 1rem 0;
+}
+
+.card-front em {
+    font-style: normal;
+    opacity: 0.7;
+}
+
+/* Lifts the front card up slightly when hovered (Mainly used on index.php) */
+.card-stack:hover .card-front {
+    transform: rotate(0deg) translateY(-10px) translateX(-5px);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+}
+
+/* ── Standard Tags ── */
+.tags {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.tag {
+    background: rgba(255,255,255,0.2);
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* ── Rich Profile Card Elements (Used in Discover & Live Preview) ── */
+.card-image {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center top;
+    opacity: 1;
+}
+
+/* Dark gradient overlay — ensures WCAG contrast for text over photos */
+.card-gradient {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70%;
+    background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.60) 30%, rgba(0,0,0,0.20) 65%, transparent 100%);
+    pointer-events: none;
+}
+
+.card-body-content {
+    position: relative;
+    z-index: 3;
+    padding: 2rem;
+}
+
+.card-name {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin-bottom: 0.3rem;
+}
+
+.card-meta {
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.card-bio {
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.80);
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Truncates bio to 2 lines */
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.card-meta-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+    display: inline-block;
+}
+
+/* Rounded transparent tags for images */
+.card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.85rem;
+}
+
+.card-tag {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff;
+    font-size: 0.78rem;
+    padding: 0.28rem 0.75rem;
+    border-radius: 50px;
+    backdrop-filter: blur(4px);
+}
+
+/* ============================================================
+   4. HOME PAGE STYLES (index.php)
    ============================================================ */
 
 /* ── Hero Layout ── */
@@ -269,7 +433,6 @@ body::after {
     line-height: 1.4;
 }
 
-/* Stacked Profile Cards */
 .hero-visual {
     flex: 1;
     display: flex;
@@ -280,87 +443,7 @@ body::after {
     width: 100%;
 }
 
-/* The container holding the absolute positioned cards */
-.card-stack {
-    position: relative;
-    width: 320px;
-    height: 420px;
-}
-
-.profile-card {
-    position: absolute; /* Allows cards to stack on top of each other */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-}
-
-/* Bottom card in the graphic */
-.card-back-2 {
-    background: #5A3286;
-    transform: rotate(10deg) translate(20px, 10px);
-    z-index: 1;
-}
-
-/* Middle card in the graphic */
-.card-back-1 {
-    background: #872A7A;
-    transform: rotate(5deg) translate(10px, 5px);
-    z-index: 2;
-}
-
-/* Top active card in the graphic */
-.card-front {
-    background: var(--card-gradient);
-    z-index: 3;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end; /* Pushes text to the bottom */
-    padding: 2rem;
-    color: white;
-    transition: transform 0.4s ease, box-shadow 0.4s ease;
-}
-
-.card-front h3 {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0;
-}
-
-.card-front p {
-    font-size: 0.9rem;
-    opacity: 0.9;
-    margin: 0.5rem 0 1rem 0;
-}
-
-.card-front em {
-    font-style: normal;
-    opacity: 0.7;
-}
-
-/* Lifts the front card up slightly when hovered */
-.card-stack:hover .card-front {
-    transform: rotate(0deg) translateY(-10px) translateX(-5px);
-    box-shadow: 0 30px 60px rgba(0,0,0,0.3);
-}
-
-.tags {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.tag {
-    background: rgba(255,255,255,0.2);
-    padding: 0.3rem 0.8rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-
-/* ── How It Works Section (Home Page) ── */
+/* ── How It Works Section ── */
 .step-card {
     background: #FFFFFF;
     border-radius: 20px;
@@ -396,8 +479,7 @@ body::after {
     font-size: 0.95rem;
 }
 
-
-/* ── Featured Interests Marquee (Home Page) ── */
+/* ── Featured Interests Marquee ── */
 .marquee-section {
     width: 100vw;
     position: relative;
@@ -454,8 +536,7 @@ body::after {
        Once it hits -50%, it instantly snaps back to 0% and the loop is invisible! */
 }
 
-
-/* ── Trust & Safety Banner (Home Page) ── */
+/* ── Trust & Safety Banner ── */
 .trust-feature {
     display: flex;
     flex-direction: column;
@@ -485,10 +566,8 @@ body::after {
     box-shadow: 0 8px 20px rgba(255, 74, 122, 0.25);
 }
 
-
-
 /* ============================================================
-   4. PROFILES / DISCOVER PAGE (profiles.php)
+   5. PROFILES / DISCOVER PAGE (profiles.php)
    ============================================================ */
 
 /* Extra variables scoped only to the profiles page */
@@ -591,7 +670,7 @@ body::after {
     box-shadow: 0 8px 32px rgba(34, 197, 94, 0.4);
 }
 
-/* ── Interactive Swiping Cards ── */
+/* ── Interactive Swiping Cards (Overrides Shared UI for Discover) ── */
 /* The wrapper for the active swiping cards */
 .swipe-arena .card-stack {
     position: relative;
@@ -648,84 +727,6 @@ body::after {
 
 .swipe-arena .profile-card:active {
     cursor: grabbing;
-}
-
-.card-image {
-    position: absolute;
-    inset: 0;
-    background-size: cover;
-    background-position: center top;
-    opacity: 1;
-}
-
-/* Dark gradient overlay — ensures WCAG contrast for text over photos */
-.card-gradient {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 70%;
-    background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.60) 30%, rgba(0,0,0,0.20) 65%, transparent 100%);
-    pointer-events: none;
-}
-
-.card-body-content {
-    position: relative;
-    z-index: 3;
-    padding: 2rem;
-}
-
-.card-name {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #FFFFFF;
-    margin-bottom: 0.3rem;
-}
-
-.card-meta {
-    font-size: 0.88rem;
-    color: rgba(255,255,255,0.85);
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-}
-
-.card-bio {
-    font-size: 0.88rem;
-    color: rgba(255,255,255,0.80);
-    line-height: 1.55;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* Truncates bio to 2 lines */
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.card-meta-dot {
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.6);
-    display: inline-block;
-}
-
-.card-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-bottom: 0.85rem;
-}
-
-.card-tag {
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.25);
-    color: #fff;
-    font-size: 0.78rem;
-    padding: 0.28rem 0.75rem;
-    border-radius: 50px;
-    backdrop-filter: blur(4px);
 }
 
 /* ── Swipe Action Feedback (LIKE / NOPE stamps) ── */
@@ -895,8 +896,8 @@ body::after {
 }
 
 /* ============================================================
-   5. MATCH SUCCESS POPUP
-   Used by both profiles.php and profile.php
+   6. MATCH SUCCESS POPUP
+   Used dynamically by profiles.php and profile.php
    ============================================================ */
 
 .match-popup-overlay {
@@ -968,36 +969,22 @@ body::after {
 }
 
 @keyframes matchFadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes matchPopIn {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes matchBarDrain {
-    from {
-        transform: scaleX(1);
-    }
-    to {
-        transform: scaleX(0);
-    }
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
 }
 
 /* ============================================================
-   6. DETAILED PROFILE VIEW PAGE (profile.php)
+   7. DETAILED PROFILE VIEW PAGE (profile.php)
    ============================================================ */
 
 /* Wrapper for the detailed view */
@@ -1257,14 +1244,8 @@ body::after {
 }
 
 @keyframes replyIn {
-    from {
-        opacity: 0;
-        transform: translateY(-6px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .vp-reply-textarea {
@@ -1365,7 +1346,7 @@ body::after {
 }
 
 /* ============================================================
-   7. MATCHES PAGE (matches.php)
+   8. MATCHES PAGE (matches.php)
    ============================================================ */
 
 .matches-main {
@@ -1556,7 +1537,7 @@ body::after {
 }
 
 /* ============================================================
-   8. ABOUT PAGE (about.php)
+   9. ABOUT PAGE (about.php)
    ============================================================ */
 
 .about-hero {
@@ -1731,9 +1712,9 @@ body::after {
     font-weight: 800;
 }
 
-
 /* ============================================================
-   8. EDIT-PROFILE PAGE (edit-profile.php)
+   10. EDIT PROFILE SPECIFIC PAGE (edit-profile.php)
+   (Note: Also uses SHARED UI ELEMENTS and FORM CONTROLS)
    ============================================================ */
 
 .card-profile-preview {
@@ -1742,6 +1723,7 @@ body::after {
     height: 420px;
 }
 
+/* ── Top Welcome Banner ── */
 .ep-header-banner {
     background: linear-gradient(135deg, rgba(255, 74, 122, 0.05) 0%, rgba(255, 74, 122, 0.15) 100%);
     border-radius: 24px;
@@ -1750,6 +1732,7 @@ body::after {
     border: 1px solid rgba(255, 74, 122, 0.1);
 }
 
+/* ── Clickable Interactive Tag ── */
 .tag-span {
     display: inline-flex;
     align-items: center;
@@ -1779,11 +1762,46 @@ body::after {
     opacity: 1;
 }
 
+/* ── Photo Remove Buttons & Overlays (Photo Grid in Edit Profile) ── */
+.photo-remove-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.photo-slot:hover .photo-remove-btn:not(.d-none) {
+    opacity: 1;
+}
+
+.photo-remove-btn:hover {
+    background: var(--primary-pink);
+    transform: scale(1.1);
+}
+
+.photo-click-overlay {
+    z-index: 5;
+    cursor: pointer;
+}
 
 /* ============================================================
-   9. MULTI-STEP SIGNUP WIZARD
+   11. FORM CONTROLS, MEDIA GRIDS & SIGNUP WIZARD 
+   (Shared heavily between signup.php and edit-profile.php)
    ============================================================ */
 
+/* Soft background inputs */
 .custom-input {
     background-color: #F8F9FA !important;
     border: 2px solid transparent !important;
@@ -1802,11 +1820,13 @@ body::after {
     border-color: #dc3545 !important;
     background-color: #fff8f8 !important;
 }
+
 .invalid-feedback {
     display: none;
     font-size: 0.8rem;
     margin-top: 0.3rem;
 }
+
 .is-invalid ~ .invalid-feedback {
     display: block;
 }
@@ -1817,6 +1837,7 @@ body::after {
     cursor: pointer;
     padding: 0;
 }
+
 .custom-dropdown-display {
     padding: 0.5rem 1rem;
     width: 100%;
@@ -1824,6 +1845,7 @@ body::after {
     display: flex;
     align-items: center;
 }
+
 .custom-dropdown-display::after {
     content: '▼';
     position: absolute;
@@ -1831,6 +1853,7 @@ body::after {
     font-size: 0.8rem;
     color: #999;
 }
+
 .custom-dropdown-list {
     position: absolute;
     top: 105%;
@@ -1843,13 +1866,16 @@ body::after {
     overflow-y: auto;
     display: none;
 }
+
 .custom-dropdown-list.show {
     display: block;
 }
+
 .custom-dropdown-item {
     padding: 10px 15px;
     transition: background 0.2s;
 }
+
 .custom-dropdown-item:hover {
     background: #FFF0F5;
     color: var(--primary-pink);
@@ -1902,7 +1928,7 @@ body::after {
     background-color: #fff8f8;
 }
 
-/* Progress Indicators */
+/* ── Multi-Step Form Progress Indicators (signup.php) ── */
 .step-indicator {
     width: 36px; height: 36px;
     border-radius: 50%;
@@ -1910,21 +1936,24 @@ body::after {
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; z-index: 1; transition: all 0.4s ease;
 }
+
 .step-indicator.active {
     background: var(--primary-pink); color: white;
     box-shadow: 0 0 0 4px rgba(255, 74, 122, 0.2);
 }
 
+/* ── Animations ── */
 .fade-in-up { animation: fadeInUp 0.4s ease forwards; }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Interactive Interest Tags */
+/* ── Interactive Interest Tags (Hidden Checkbox Hack) ── */
 .interest-checkbox { display: none; }
 .interest-label {
     display: inline-block; border: 1.5px solid rgba(255, 74, 122, 0.2); border-radius: 50px;
     padding: 0.4rem 1.2rem; font-size: 0.85rem; font-weight: 600; color: var(--text-dark);
     cursor: pointer; transition: all 0.2s ease; user-select: none;
 }
+
 .interest-checkbox:checked + .interest-label {
     background-color: var(--primary-pink); color: white; border-color: var(--primary-pink);
     box-shadow: 0 4px 10px rgba(255, 74, 122, 0.3); transform: translateY(-2px);

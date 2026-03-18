@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $bio       = $_POST['biography'] ?? '';
     $education = $_POST['education'] ?? '';
     $loveLanguage = $_POST['love_language'] ?? '';
-    $interests = $_POST['interests'] ?? ''; // comma-separated IDs
+    $interests = $_POST['interests'] ?? ''; 
     $pets      = $_POST['pets'] ?? '';
     $workout   = $_POST['workout'] ?? '';
     $socialMedia = $_POST['social_media'] ?? '';
@@ -43,22 +43,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
 
+        // 1. Update Core User details
         $stmt = $pdo->prepare("UPDATE users SET first_name = ?, last_name = ? WHERE id = ?");
         $stmt->execute([$firstName, $lastName, $currentUser]);
 
-        $stmt = $pdo->prepare("
-            UPDATE profile SET 
-                age = ?, gender = ?, pronouns = ?, location = ?, occupation = ?, height = ?, 
-                biography = ?, education = ?, love_language = ?, pets = ?, workout = ?, social_media = ?, favourite_song = ?
-            WHERE user_id = ?
-        ");
-        $stmt->execute([$age, $gender, $pronouns, $location, $occupation, $height, $bio, $education, $loveLanguage, $pets, $workout, $socialMedia, $favSong, $currentUser]);
+        // 2. Handle Photo Uploads & Removals
+        $uploadDir = __DIR__ . '/images/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+        
+        $imageCols = ['main_image', 'image_2', 'image_3', 'image_4', 'image_5', 'image_6'];
+        $imageUpdates = [];
+        $imageParams = [];
 
+        foreach ($imageCols as $col) {
+            // Check if a new file was uploaded
+            if (isset($_FILES[$col]) && $_FILES[$col]['error'] === UPLOAD_ERR_OK) {
+                $ext = strtolower(pathinfo($_FILES[$col]['name'], PATHINFO_EXTENSION));
+                if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'avif'])) {
+                    $newName = 'user_' . $currentUser . '_' . uniqid() . '.' . $ext;
+                    if (move_uploaded_file($_FILES[$col]['tmp_name'], $uploadDir . $newName)) {
+                        $imageUpdates[] = "$col = ?";
+                        $imageParams[] = $newName;
+                    }
+                }
+            } 
+            // Check if the user clicked 'Remove' (We protect main_image from being completely NULL)
+            elseif (!empty($_POST['remove_' . $col]) && $_POST['remove_' . $col] === '1' && $col !== 'main_image') {
+                $imageUpdates[] = "$col = NULL";
+            }
+        }
+
+        // 3. Construct dynamic Profile Update query
+        $profileSql = "UPDATE profile SET age=?, gender=?, pronouns=?, location=?, occupation=?, height=?, biography=?, education=?, love_language=?, pets=?, workout=?, social_media=?, favourite_song=?";
+        $profileParams = [$age, $gender, $pronouns, $location, $occupation, $height, $bio, $education, $loveLanguage, $pets, $workout, $socialMedia, $favSong];
+
+        if (!empty($imageUpdates)) {
+            $profileSql .= ", " . implode(", ", $imageUpdates);
+            $profileParams = array_merge($profileParams, $imageParams);
+        }
+        $profileSql .= " WHERE user_id=?";
+        $profileParams[] = $currentUser;
+
+        $stmt = $pdo->prepare($profileSql);
+        $stmt->execute($profileParams);
+
+        // 4. Update Preferences
         $stmt = $pdo->prepare("UPDATE preferences SET looking_for = ?, show_me = ?, age_min = ?, age_max = ? WHERE user_id = ?");
         $stmt->execute([$lookingFor, $showMe, $ageMin, $ageMax, $currentUser]);
 
+        // 5. Update Interests
         $pdo->prepare("DELETE FROM user_interests WHERE user_id = ?")->execute([$currentUser]);
-
         if ($interests) {
             $interestIds = explode(',', $interests);
             $stmt = $pdo->prepare("INSERT INTO user_interests (user_id, interest_id) VALUES (?, ?)");
@@ -68,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         $pdo->commit();
-        $successMessage = "Profile updated successfully!";
+        $successMessage = "Profile and photos updated successfully!";
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         $errorMessage = "Error saving profile: " . $e->getMessage();
@@ -76,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ══════════════════════════════════════════════════════
-// DB Queries
+// DB Queries (Fetch existing data)
 // ══════════════════════════════════════════════════════
 try {
     $stmt = $pdo->query("SELECT id, name FROM interests ORDER BY name");
@@ -127,7 +161,42 @@ require_once 'includes/header.php';
     <div class="row g-4 g-lg-5">
 
         <div class="col-lg-7">
-            <form method="POST" id="editProfileForm">
+            <form method="POST" id="editProfileForm" enctype="multipart/form-data">
+
+                <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px;">
+                    <div class="card-body p-4 p-md-5">
+                        <h4 class="fw-bold mb-4 d-flex align-items-center gap-2" style="color: var(--primary-pink);">
+                            <i class="bi bi-camera-fill fs-3"></i> My Photos
+                        </h4>
+                        <p class="text-muted mb-4">Tap an empty slot to upload. The first image is your main profile picture.</p>
+
+                        <div class="photo-upload-grid mb-2">
+                            <?php 
+                            $slots = ['main_image','image_2','image_3','image_4','image_5','image_6'];
+                            foreach ($slots as $col): 
+                                $hasImg = !empty($profile[$col]);
+                                $bg = $hasImg ? "background-image: url('images/".h($profile[$col])."');" : "";
+                                $isMain = $col === 'main_image';
+                            ?>
+                            <div class="photo-slot <?= $isMain ? 'main-slot' : '' ?>" id="slot_<?= $col ?>" style="<?= $bg ?>">
+                                
+                                <input type="file" name="<?= $col ?>" accept="image/*" class="d-none photo-input" id="input_<?= $col ?>">
+                                <input type="hidden" name="remove_<?= $col ?>" id="remove_<?= $col ?>" value="0">
+                                
+                                <div class="photo-placeholder" style="opacity: <?= $hasImg ? '0' : '1' ?>;">
+                                    <span style="font-size: 2rem;">+</span><?= $isMain ? '<br>Main Photo' : '' ?>
+                                </div>
+
+                                <?php if (!$isMain): ?>
+                                    <button type="button" class="photo-remove-btn <?= $hasImg ? '' : 'd-none' ?>" onclick="removePhoto('<?= $col ?>', event)"><i class="bi bi-x-lg"></i></button>
+                                <?php endif; ?>
+
+                                <div class="photo-click-overlay position-absolute w-100 h-100" onclick="document.getElementById('input_<?= $col ?>').click()"></div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px;">
                     <div class="card-body p-4 p-md-5">
@@ -344,7 +413,7 @@ require_once 'includes/header.php';
                         <span class="badge bg-light text-dark position-absolute top-0 end-0 m-3 fw-bold shadow-sm" style="font-size: 0.8rem;"><i class="bi bi-eye"></i> Live Preview</span>
                         
                         <h3 class="card-name mb-1" style="color: white; font-size: 2.2rem; font-weight: 800; line-height: 1.1;">
-                            <?= h($profile['first_name'] ?? 'Your Name') ?>, <?= h((string)($profile['age'] ?? 'Age')) ?>
+                            <?= h($profile['first_name'] ?? 'Your Name') ?>, <span id="liveAge"><?= h((string)($profile['age'] ?? 'Age')) ?></span>
                         </h3>
                         
                         <p class="card-meta mb-3" style="color: rgba(255,255,255,0.9); font-size: 0.95rem;">
@@ -379,11 +448,10 @@ require_once 'includes/header.php';
 <script>
     // --- Custom Select Dropdown Logic ---
     document.querySelectorAll('.custom-select').forEach(select => {
-        select.style.display = 'none'; // Hide native ugly select
+        select.style.display = 'none';
         
         const wrapper = document.createElement('div');
         wrapper.className = 'custom-dropdown-wrapper form-control form-control-lg custom-input';
-        // Add minimal bottom margin so it doesn't break layout spacing
         wrapper.style.marginBottom = '0';
         
         const display = document.createElement('div');
@@ -405,10 +473,9 @@ require_once 'includes/header.php';
                 display.style.color = 'var(--text-dark)';
                 list.classList.remove('show');
                 
-                // If it's the interest select, trigger the change event manually!
                 if(select.id === 'interest-select') {
                     select.dispatchEvent(new Event('change'));
-                    display.innerText = '+ Add an interest...'; // reset display after selection
+                    display.innerText = '+ Add an interest...';
                 }
             });
             list.appendChild(item);
@@ -427,6 +494,54 @@ require_once 'includes/header.php';
 
     document.addEventListener('click', () => {
         document.querySelectorAll('.custom-dropdown-list').forEach(l => l.classList.remove('show'));
+    });
+
+    // --- Photo Upload & Removal Logic ---
+    function removePhoto(col, event) {
+        event.stopPropagation(); // Prevent the click overlay from opening the file dialog
+        document.getElementById('remove_' + col).value = '1';
+        
+        const slot = document.getElementById('slot_' + col);
+        slot.style.backgroundImage = '';
+        slot.querySelector('.photo-placeholder').style.opacity = '1';
+        slot.querySelector('.photo-input').value = '';
+        
+        // Hide the remove button
+        event.currentTarget.classList.add('d-none');
+    }
+
+    document.querySelectorAll('.photo-input').forEach(input => {
+        input.addEventListener('change', function() {
+            const file = this.files[0];
+            const col = this.name;
+            const slot = document.getElementById('slot_' + col);
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    slot.style.backgroundImage = `url(${e.target.result})`;
+                    slot.querySelector('.photo-placeholder').style.opacity = '0';
+                    document.getElementById('remove_' + col).value = '0'; // Undo any previous remove flag
+                    
+                    // Show remove button for non-main images
+                    const rmBtn = slot.querySelector('.photo-remove-btn');
+                    if (rmBtn) rmBtn.classList.remove('d-none');
+
+                    // Update live preview if it's the main image
+                    if (col === 'main_image') {
+                        let previewImg = document.querySelector('.card-image');
+                        if (!previewImg) {
+                            previewImg = document.createElement('div');
+                            previewImg.className = 'card-image';
+                            document.querySelector('.card-gradient').before(previewImg);
+                        }
+                        previewImg.style.backgroundImage = `url(${e.target.result})`;
+                        document.querySelector('.card-front').style.background = 'transparent';
+                    }
+                }
+                reader.readAsDataURL(file);
+            }
+        });
     });
 
     // --- Interest Tags Logic ---
