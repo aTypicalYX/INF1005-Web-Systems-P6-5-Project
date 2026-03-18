@@ -34,6 +34,7 @@ try {
             p.location,
             p.occupation,
             p.main_image    AS profile_pic,
+            m.id			AS match_id,
             m.created_at    AS matched_at,
             -- Get the OTHER user's id regardless of which column we're in
             CASE
@@ -100,9 +101,9 @@ require_once 'includes/header.php';
                     $imgUrl = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=4A1060&color=F5E6FF&size=400';
                 }
             ?>
-            <a href="profile.php?id=<?= h((string)$match['matched_user_id']) ?>"
+            <a href="chat.php?match_id=<?= h((string)$match['match_id']) ?>"
                class="match-card"
-               aria-label="View <?= h($match['name']) ?>'s profile">
+               aria-label="View chats with <?= h($match['name']) ?>">
 
                 <!-- Photo -->
                 <div class="match-card-photo">
