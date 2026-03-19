@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ══════════════════════════════════════════════════════
-// DB Queries
+// DB Queries & Stats Calculation
 // ══════════════════════════════════════════════════════
 try {
     $stmt = $pdo->query("SELECT id, name FROM interests ORDER BY name");
@@ -130,6 +130,22 @@ try {
 } catch (Exception $e) {
     $profile = [];
 }
+
+// -- Calculate Live Stats --
+$photoCount = 0;
+foreach (['main_image', 'image_2', 'image_3', 'image_4', 'image_5', 'image_6'] as $col) {
+    if (!empty($profile[$col])) $photoCount++;
+}
+
+$interestCount = empty($profile['interests']) ? 0 : count(explode(',', $profile['interests']));
+
+$keyFields = ['first_name', 'age', 'gender', 'location', 'occupation', 'biography', 'education', 'looking_for', 'main_image', 'interests'];
+$filledFields = 0;
+foreach ($keyFields as $field) {
+    if (!empty($profile[$field])) $filledFields++;
+}
+$completionPct = count($keyFields) > 0 ? round(($filledFields / count($keyFields)) * 100) : 0;
+// --------------------------
 
 $activePage = 'profile';
 $pageTitle  = h($profile['first_name'] ?? 'Your') . '\'s Profile';
@@ -190,6 +206,26 @@ require_once 'includes/header.php';
                     </div>
                 </div>
 
+                <div class="stats-strip shadow-sm mb-4">
+                    <div class="stat-item">
+                        <i class="bi bi-images"></i>
+                        <span class="stat-val"><?= $photoCount ?> / 6</span>
+                        <span class="stat-label">Photos</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <i class="bi bi-tags-fill"></i>
+                        <span class="stat-val"><?= $interestCount ?> / 5</span>
+                        <span class="stat-label">Interests</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span class="stat-val"><?= $completionPct ?>%</span>
+                        <span class="stat-label">Complete</span>
+                    </div>
+                </div>
+
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px;">
                     <div class="card-body p-4 p-md-5">
                         <h4 class="fw-bold mb-4 d-flex align-items-center gap-2" style="color: var(--primary-pink);">
@@ -244,7 +280,7 @@ require_once 'includes/header.php';
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px;">
+                <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px; background-color: #FFF0F5;">
                     <div class="card-body p-4 p-md-5">
                         <h4 class="fw-bold mb-4 d-flex align-items-center gap-2" style="color: var(--primary-pink);">
                             <i class="bi bi-stars fs-3"></i> About Me
@@ -252,7 +288,7 @@ require_once 'includes/header.php';
 
                         <div class="mb-4">
                             <label class="form-label text-muted fw-bold">Biography</label>
-                            <textarea class="form-control custom-input" name="biography" rows="4"><?= h($profile['biography'] ?? '') ?></textarea>
+                            <textarea class="form-control custom-input" name="biography" rows="4" style="background-color: #FFFFFF !important;"><?= h($profile['biography'] ?? '') ?></textarea>
                         </div>
 
                         <div class="row g-3 mb-4">
@@ -360,8 +396,8 @@ require_once 'includes/header.php';
                             <div class="col-md-6">
                                 <label class="form-label text-muted fw-bold">Show Me</label>
                                 <select class="custom-select" name="show_me">
-                                    <option <?= ($profile['show_me'] ?? '')=='Male'?'selected':'' ?>>Men</option>
-                                    <option <?= ($profile['show_me'] ?? '')=='Female'?'selected':'' ?>>Women</option>
+                                    <option <?= ($profile['show_me'] ?? '')=='Male'?'selected':'' ?>>Male</option>
+                                    <option <?= ($profile['show_me'] ?? '')=='Female'?'selected':'' ?>>Female</option>
                                     <option <?= ($profile['show_me'] ?? '')=='Everyone'?'selected':'' ?>>Everyone</option>
                                 </select>
                             </div>
@@ -444,6 +480,10 @@ require_once 'includes/header.php';
         const wrapper = document.createElement('div');
         wrapper.className = 'custom-dropdown-wrapper form-control form-control-lg custom-input';
         wrapper.style.marginBottom = '0';
+        // Add a check to inherit the white background if it's inside the tinted card
+        if (select.closest('[style*="background-color: #FFF0F5"]')) {
+            wrapper.style.backgroundColor = '#FFFFFF';
+        }
         
         const display = document.createElement('div');
         display.className = 'custom-dropdown-display';
@@ -512,13 +552,11 @@ require_once 'includes/header.php';
         const cardBack1 = document.querySelector('.card-back-1');
         const cardBack2 = document.querySelector('.card-back-2');
 
-        // Apply general CSS properties to the back cards so the images fit perfectly
         cardBack1.style.backgroundSize = 'cover';
         cardBack1.style.backgroundPosition = 'center';
         cardBack2.style.backgroundSize = 'cover';
         cardBack2.style.backgroundPosition = 'center';
 
-        // 0 Images Fallback
         if (images.length === 0) {
             previewBg.style.display = 'none';
             cardFront.style.background = 'var(--card-gradient)';
@@ -532,25 +570,19 @@ require_once 'includes/header.php';
 
         if (currentPreviewIndex >= images.length) currentPreviewIndex = 0;
 
-        // Front Card logic
         previewBg.style.display = 'block';
         previewBg.style.backgroundImage = images[currentPreviewIndex];
         cardFront.style.background = 'transparent';
-
-        // ── MAGIC: INJECTING BACK IMAGES ──
         
-        // Card Back 1 (The middle card peaking out)
         if (images.length > 1) {
             const nextIdx = (currentPreviewIndex + 1) % images.length;
             cardBack1.style.backgroundImage = images[nextIdx];
-            // Uses a native CSS filter to slightly darken the back image so the front card pops!
             cardBack1.style.filter = 'brightness(0.6)';
         } else {
             cardBack1.style.backgroundImage = 'none';
             cardBack1.style.filter = 'none';
         }
 
-        // Card Back 2 (The very back card)
         if (images.length > 2) {
             const nextNextIdx = (currentPreviewIndex + 2) % images.length;
             cardBack2.style.backgroundImage = images[nextNextIdx];
@@ -560,7 +592,6 @@ require_once 'includes/header.php';
             cardBack2.style.filter = 'none';
         }
 
-        // Render Progress Bars
         indicators.innerHTML = '';
         if (images.length > 1) {
             for (let i = 0; i < images.length; i++) {
@@ -573,7 +604,6 @@ require_once 'includes/header.php';
 
     updateLivePreviewDisplay();
 
-    // Click listener for left/right navigation
     document.getElementById('live-preview-card').addEventListener('click', (e) => {
         const images = getGalleryImages();
         if (images.length <= 1) return; 
@@ -582,9 +612,9 @@ require_once 'includes/header.php';
         const clickX = e.clientX - rect.left;
         
         if (clickX < rect.width / 2) {
-            currentPreviewIndex = (currentPreviewIndex - 1 + images.length) % images.length; // Go back
+            currentPreviewIndex = (currentPreviewIndex - 1 + images.length) % images.length;
         } else {
-            currentPreviewIndex = (currentPreviewIndex + 1) % images.length; // Go forward
+            currentPreviewIndex = (currentPreviewIndex + 1) % images.length;
         }
         updateLivePreviewDisplay();
     });
