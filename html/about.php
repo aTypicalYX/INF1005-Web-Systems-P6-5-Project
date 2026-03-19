@@ -182,6 +182,19 @@ require_once 'includes/header.php';
                         </div>
                     </div>
 
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingFour">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="true" aria-controls="collapseFour">
+                                <span class="fw-bold">Myth: Everyone is able to sign up for the website.</span>
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse show" aria-labelledby="headingFour" data-bs-parent="#mythAccordion">
+                            <div class="accordion-body">
+                                <strong>Reality:</strong> S³ is exclusive to verified SIT students. We require email verification with a valid <strong>@sit.singaporetech.edu.sg</strong> address to ensure that our community remains safe and genuine.
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
