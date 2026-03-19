@@ -368,8 +368,8 @@ require_once 'includes/header.php';
                             <div class="col-md-6">
                                 <label class="form-label text-muted fw-bold">Show Me</label>
                                 <select class="custom-select" name="show_me">
-                                    <option <?= ($profile['show_me'] ?? '')=='Male'?'selected':'' ?>>Men</option>
-                                    <option <?= ($profile['show_me'] ?? '')=='Female'?'selected':'' ?>>Women</option>
+                                    <option <?= ($profile['show_me'] ?? '')=='Male'?'selected':'' ?>>Male</option>
+                                    <option <?= ($profile['show_me'] ?? '')=='Female'?'selected':'' ?>>Female</option>
                                     <option <?= ($profile['show_me'] ?? '')=='Everyone'?'selected':'' ?>>Everyone</option>
                                 </select>
                             </div>

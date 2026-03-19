@@ -17,7 +17,7 @@ if (!function_exists('h')) {
 
 // ── Get profile ID from URL ──
 $profileId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-$fromChat = isset($_GET['from']) && $_GET['from'] === 'chat';
+
 
 if ($profileId === 0) {
     header('Location: profiles.php');
@@ -29,21 +29,17 @@ $profile = null;
 try {
     $stmt = $pdo->prepare("
         SELECT u.id,
-                p.display_name  AS name,
-                p.age,
-                p.location,
-                p.occupation,
-                p.biography     AS bio,
-                p.main_image    AS image_1,
-                p.image_2,
-                p.image_3,
-                p.image_4,
-                p.image_5,
-                p.image_6,
-                (SELECT GROUP_CONCAT(i.name ORDER BY i.name SEPARATOR ',')
-                    FROM user_interests ui
-                    JOIN interests i ON i.id = ui.interest_id
-                    WHERE ui.user_id = u.id) AS interests
+               p.display_name  AS name,
+               p.age,
+               p.location,
+               p.occupation,
+               p.biography     AS bio,
+               p.main_image    AS image_1,
+               p.image_2,
+               p.image_3,
+               p.image_4,
+               p.image_5,
+               p.image_6
         FROM users u
         JOIN profile p ON p.user_id = u.id
         WHERE u.id = ?
@@ -58,15 +54,18 @@ try {
 // ── 404 if user/profile not found ──
 if (!$profile) {
     http_response_code(404);
+    // You can make a proper 404 page later — for now redirect back
     header('Location: profiles.php');
     exit();
 }
 
 // ── Build tags ──
-$tags = [];
-if (!empty($profile['interests'])) {
-    $tags = array_map('trim', explode(',', $profile['interests']));
-}
+// $tags = [];
+// if (!empty($profile['interests'])) {
+//     $tags = array_map('trim', explode(',', $profile['interests']));
+// }
+// if (!empty($profile['religion']))  $tags[] = $profile['religion'];
+// if (!empty($profile['horoscope'])) $tags[] = '♏ ' . $profile['horoscope'];
 
 // ── Build images list (hero + up to 5 extras) ──
 // image_1 is the hero. Extra images are image_2 through image_6.
@@ -152,7 +151,6 @@ require_once 'includes/header.php';
         </a>
 
         <!-- Pass / Like -->
-        <?php if (!$fromChat): ?>
         <div class="vp-hero-actions" aria-label="Profile actions">
             <button class="vp-action-btn vp-btn-pass"
                     aria-label="Pass on <?= h($profile['name']) ?>" title="Pass"
@@ -172,7 +170,6 @@ require_once 'includes/header.php';
                 </svg>
             </button>
         </div>
-        <?php endif; ?>
     </div>
 
     <!-- ── Scrollable content ── -->

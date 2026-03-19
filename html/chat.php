@@ -109,10 +109,33 @@ require_once 'includes/header.php';
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `match_id=${matchId}&message=${encodeURIComponent(message)}`
         })
-        .then(() => {
-            input.value = '';
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                showChatError(data.error);
+                return; // don't clear the input so they can edit their message
+            }
+            input.value = ''; // only clear on success
+        })
+        .catch(() => {
+            showChatError('Failed to send message. Please try again.');
         });
-    });
+
+    function showChatError(msg) {
+        // Remove any existing error first
+        document.querySelectorAll('.chat-error-msg').forEach(e => e.remove());
+
+        const chatBox = document.getElementById('chat-box');
+        const err = document.createElement('div');
+        err.className = 'chat-error-msg';
+        err.style.cssText = 'background:#ffe0e0; color:#c00; text-align:center; font-size:0.85rem; border-radius:12px; padding:6px 12px; margin: 4px auto; max-width: 80%;';
+        err.innerText = '⚠️ ' + msg;
+        chatBox.appendChild(err);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // Auto-remove after 3 seconds
+        setTimeout(() => err.remove(), 3000);
+    }
 
     // Returns the highest message id currently in the DOM, or 0 if none
     function getLastMessageId() {
