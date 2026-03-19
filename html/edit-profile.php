@@ -43,11 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
 
-        // 1. Update Core User details
         $stmt = $pdo->prepare("UPDATE users SET first_name = ?, last_name = ? WHERE id = ?");
         $stmt->execute([$firstName, $lastName, $currentUser]);
 
-        // 2. Handle Photo Uploads & Removals
         $uploadDir = __DIR__ . '/images/';
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
         
@@ -56,7 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $imageParams = [];
 
         foreach ($imageCols as $col) {
-            // Check if a new file was uploaded
             if (isset($_FILES[$col]) && $_FILES[$col]['error'] === UPLOAD_ERR_OK) {
                 $ext = strtolower(pathinfo($_FILES[$col]['name'], PATHINFO_EXTENSION));
                 if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'avif'])) {
@@ -67,13 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             } 
-            // Check if the user clicked 'Remove' (We protect main_image from being completely NULL)
             elseif (!empty($_POST['remove_' . $col]) && $_POST['remove_' . $col] === '1' && $col !== 'main_image') {
                 $imageUpdates[] = "$col = NULL";
             }
         }
 
-        // 3. Construct dynamic Profile Update query
         $profileSql = "UPDATE profile SET age=?, gender=?, pronouns=?, location=?, occupation=?, height=?, biography=?, education=?, love_language=?, pets=?, workout=?, social_media=?, favourite_song=?";
         $profileParams = [$age, $gender, $pronouns, $location, $occupation, $height, $bio, $education, $loveLanguage, $pets, $workout, $socialMedia, $favSong];
 
@@ -87,11 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare($profileSql);
         $stmt->execute($profileParams);
 
-        // 4. Update Preferences
         $stmt = $pdo->prepare("UPDATE preferences SET looking_for = ?, show_me = ?, age_min = ?, age_max = ? WHERE user_id = ?");
         $stmt->execute([$lookingFor, $showMe, $ageMin, $ageMax, $currentUser]);
 
-        // 5. Update Interests
         $pdo->prepare("DELETE FROM user_interests WHERE user_id = ?")->execute([$currentUser]);
         if ($interests) {
             $interestIds = explode(',', $interests);
@@ -110,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ══════════════════════════════════════════════════════
-// DB Queries (Fetch existing data)
+// DB Queries
 // ══════════════════════════════════════════════════════
 try {
     $stmt = $pdo->query("SELECT id, name FROM interests ORDER BY name");
@@ -179,7 +172,6 @@ require_once 'includes/header.php';
                                 $isMain = $col === 'main_image';
                             ?>
                             <div class="photo-slot <?= $isMain ? 'main-slot' : '' ?>" id="slot_<?= $col ?>" style="<?= $bg ?>">
-                                
                                 <input type="file" name="<?= $col ?>" accept="image/*" class="d-none photo-input" id="input_<?= $col ?>">
                                 <input type="hidden" name="remove_<?= $col ?>" id="remove_<?= $col ?>" value="0">
                                 
@@ -368,8 +360,8 @@ require_once 'includes/header.php';
                             <div class="col-md-6">
                                 <label class="form-label text-muted fw-bold">Show Me</label>
                                 <select class="custom-select" name="show_me">
-                                    <option <?= ($profile['show_me'] ?? '')=='Male'?'selected':'' ?>>Male</option>
-                                    <option <?= ($profile['show_me'] ?? '')=='Female'?'selected':'' ?>>Female</option>
+                                    <option <?= ($profile['show_me'] ?? '')=='Male'?'selected':'' ?>>Men</option>
+                                    <option <?= ($profile['show_me'] ?? '')=='Female'?'selected':'' ?>>Women</option>
                                     <option <?= ($profile['show_me'] ?? '')=='Everyone'?'selected':'' ?>>Everyone</option>
                                 </select>
                             </div>
@@ -397,20 +389,20 @@ require_once 'includes/header.php';
         </div>
 
         <div class="col-lg-5 d-none d-lg-flex justify-content-center align-items-start">
-            <div class="card-stack mt-lg-2" style="width: 100%; max-width: 400px; height: 600px; position: sticky; top: 100px;">
+            <div class="card-stack mt-lg-2" style="width: 100%; max-width: 440px; height: 660px; position: sticky; top: 100px;">
+                
                 <div class="profile-card card-back-2"></div>
                 <div class="profile-card card-back-1"></div>
                 
-                <div class="profile-card card-front p-0 border-0 overflow-hidden" 
-                     style="<?php if(empty($profile['main_image'])) echo 'background: var(--card-gradient);'; ?>">
+                <div class="profile-card card-front p-0 border-0 overflow-hidden preview-clickable" id="live-preview-card">
                     
-                    <?php if (!empty($profile['main_image'])): ?>
-                        <div class="card-image" style="background-image: url('images/<?= h($profile['main_image']) ?>');"></div>
-                        <div class="card-gradient"></div>
-                    <?php endif; ?>
+                    <div id="gallery-indicators" class="gallery-indicators"></div>
+
+                    <div class="card-image" id="preview-bg"></div>
+                    <div class="card-gradient"></div>
 
                     <div class="card-body-content w-100 h-100 d-flex flex-column justify-content-end position-relative" style="z-index: 3; padding: 2rem;">
-                        <span class="badge bg-light text-dark position-absolute top-0 end-0 m-3 fw-bold shadow-sm" style="font-size: 0.8rem;"><i class="bi bi-eye"></i> Live Preview</span>
+                        <span class="badge bg-light text-dark position-absolute top-0 end-0 m-3 fw-bold shadow-sm" style="font-size: 0.8rem; z-index: 20;"><i class="bi bi-eye"></i> Live Preview</span>
                         
                         <h3 class="card-name mb-1" style="color: white; font-size: 2.2rem; font-weight: 800; line-height: 1.1;">
                             <?= h($profile['first_name'] ?? 'Your Name') ?>, <span id="liveAge"><?= h((string)($profile['age'] ?? 'Age')) ?></span>
@@ -449,7 +441,6 @@ require_once 'includes/header.php';
     // --- Custom Select Dropdown Logic ---
     document.querySelectorAll('.custom-select').forEach(select => {
         select.style.display = 'none';
-        
         const wrapper = document.createElement('div');
         wrapper.className = 'custom-dropdown-wrapper form-control form-control-lg custom-input';
         wrapper.style.marginBottom = '0';
@@ -496,18 +487,120 @@ require_once 'includes/header.php';
         document.querySelectorAll('.custom-dropdown-list').forEach(l => l.classList.remove('show'));
     });
 
+    // ══════════════════════════════════════════════════════
+    // STACKED LIVE PREVIEW GALLERY ENGINE
+    // ══════════════════════════════════════════════════════
+    let currentPreviewIndex = 0;
+
+    function getGalleryImages() {
+        const slots = document.querySelectorAll('.photo-slot');
+        let images = [];
+        slots.forEach(slot => {
+            const bg = slot.style.backgroundImage;
+            if (bg && bg !== 'none' && bg !== '') {
+                images.push(bg);
+            }
+        });
+        return images;
+    }
+
+    function updateLivePreviewDisplay() {
+        const images = getGalleryImages();
+        const previewBg = document.getElementById('preview-bg');
+        const cardFront = document.getElementById('live-preview-card');
+        const indicators = document.getElementById('gallery-indicators');
+        const cardBack1 = document.querySelector('.card-back-1');
+        const cardBack2 = document.querySelector('.card-back-2');
+
+        // Apply general CSS properties to the back cards so the images fit perfectly
+        cardBack1.style.backgroundSize = 'cover';
+        cardBack1.style.backgroundPosition = 'center';
+        cardBack2.style.backgroundSize = 'cover';
+        cardBack2.style.backgroundPosition = 'center';
+
+        // 0 Images Fallback
+        if (images.length === 0) {
+            previewBg.style.display = 'none';
+            cardFront.style.background = 'var(--card-gradient)';
+            cardBack1.style.backgroundImage = 'none';
+            cardBack2.style.backgroundImage = 'none';
+            cardBack1.style.filter = 'none';
+            cardBack2.style.filter = 'none';
+            indicators.innerHTML = '';
+            return;
+        }
+
+        if (currentPreviewIndex >= images.length) currentPreviewIndex = 0;
+
+        // Front Card logic
+        previewBg.style.display = 'block';
+        previewBg.style.backgroundImage = images[currentPreviewIndex];
+        cardFront.style.background = 'transparent';
+
+        // ── MAGIC: INJECTING BACK IMAGES ──
+        
+        // Card Back 1 (The middle card peaking out)
+        if (images.length > 1) {
+            const nextIdx = (currentPreviewIndex + 1) % images.length;
+            cardBack1.style.backgroundImage = images[nextIdx];
+            // Uses a native CSS filter to slightly darken the back image so the front card pops!
+            cardBack1.style.filter = 'brightness(0.6)';
+        } else {
+            cardBack1.style.backgroundImage = 'none';
+            cardBack1.style.filter = 'none';
+        }
+
+        // Card Back 2 (The very back card)
+        if (images.length > 2) {
+            const nextNextIdx = (currentPreviewIndex + 2) % images.length;
+            cardBack2.style.backgroundImage = images[nextNextIdx];
+            cardBack2.style.filter = 'brightness(0.35)';
+        } else {
+            cardBack2.style.backgroundImage = 'none';
+            cardBack2.style.filter = 'none';
+        }
+
+        // Render Progress Bars
+        indicators.innerHTML = '';
+        if (images.length > 1) {
+            for (let i = 0; i < images.length; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'gallery-bar' + (i === currentPreviewIndex ? ' active' : '');
+                indicators.appendChild(bar);
+            }
+        }
+    }
+
+    updateLivePreviewDisplay();
+
+    // Click listener for left/right navigation
+    document.getElementById('live-preview-card').addEventListener('click', (e) => {
+        const images = getGalleryImages();
+        if (images.length <= 1) return; 
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        
+        if (clickX < rect.width / 2) {
+            currentPreviewIndex = (currentPreviewIndex - 1 + images.length) % images.length; // Go back
+        } else {
+            currentPreviewIndex = (currentPreviewIndex + 1) % images.length; // Go forward
+        }
+        updateLivePreviewDisplay();
+    });
+
     // --- Photo Upload & Removal Logic ---
     function removePhoto(col, event) {
-        event.stopPropagation(); // Prevent the click overlay from opening the file dialog
+        event.stopPropagation();
         document.getElementById('remove_' + col).value = '1';
         
         const slot = document.getElementById('slot_' + col);
         slot.style.backgroundImage = '';
         slot.querySelector('.photo-placeholder').style.opacity = '1';
         slot.querySelector('.photo-input').value = '';
-        
-        // Hide the remove button
         event.currentTarget.classList.add('d-none');
+
+        updateLivePreviewDisplay();
     }
 
     document.querySelectorAll('.photo-input').forEach(input => {
@@ -521,23 +614,14 @@ require_once 'includes/header.php';
                 reader.onload = function(e) {
                     slot.style.backgroundImage = `url(${e.target.result})`;
                     slot.querySelector('.photo-placeholder').style.opacity = '0';
-                    document.getElementById('remove_' + col).value = '0'; // Undo any previous remove flag
+                    document.getElementById('remove_' + col).value = '0';
                     
-                    // Show remove button for non-main images
                     const rmBtn = slot.querySelector('.photo-remove-btn');
                     if (rmBtn) rmBtn.classList.remove('d-none');
 
-                    // Update live preview if it's the main image
-                    if (col === 'main_image') {
-                        let previewImg = document.querySelector('.card-image');
-                        if (!previewImg) {
-                            previewImg = document.createElement('div');
-                            previewImg.className = 'card-image';
-                            document.querySelector('.card-gradient').before(previewImg);
-                        }
-                        previewImg.style.backgroundImage = `url(${e.target.result})`;
-                        document.querySelector('.card-front').style.background = 'transparent';
-                    }
+                    if (col === 'main_image') currentPreviewIndex = 0;
+
+                    updateLivePreviewDisplay();
                 }
                 reader.readAsDataURL(file);
             }

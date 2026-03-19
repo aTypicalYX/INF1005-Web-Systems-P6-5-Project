@@ -1867,6 +1867,36 @@ body::after {
     cursor: pointer;
 }
 
+/* ── Live Preview Gallery Bars & Interaction (Edit Profile) ── */
+.gallery-indicators {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    gap: 6px;
+    z-index: 10;
+}
+
+.gallery-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+.gallery-bar.active {
+    background: #FFFFFF;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.preview-clickable {
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
 /* ============================================================
    11. FORM CONTROLS, MEDIA GRIDS & SIGNUP WIZARD 
    (Shared heavily between signup.php and edit-profile.php)
