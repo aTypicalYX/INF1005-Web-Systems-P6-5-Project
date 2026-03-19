@@ -65,7 +65,6 @@ function navClass(string $page, string $active): string {
                     <?php endif; ?>
 
                     <a href="about.php"<?= navClass('about', $activePage) ?>>About</a>
-                    <a href="pricing.php"<?= navClass('pricing', $activePage) ?>>Pricing</a>
                 </div>
 
                 <div class="nav-right">
