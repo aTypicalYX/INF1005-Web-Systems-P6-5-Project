@@ -60,7 +60,7 @@ function navClass(string $page, string $active): string {
 
                     <?php if ($loggedIn): ?>
                         <a href="profiles.php"<?= navClass('discover', $activePage) ?>>Discover</a>
-                        <a href="matches.php"<?= navClass('matches',  $activePage) ?>>Matches</a>
+                        <a href="likes.php"<?= navClass('likes',  $activePage) ?>>Likes</a>
                         <a href="messages.php"<?= navClass('messages', $activePage) ?>>Messages</a>
                     <?php endif; ?>
 

@@ -2201,3 +2201,14 @@ body::after {
     background: #e63e6d;
     box-shadow: 0 8px 25px rgba(255, 74, 122, 0.4);
 }
+
+.chat-header-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    color: inherit;
+}
+.chat-header-profile:hover strong {
+    text-decoration: underline;
+}

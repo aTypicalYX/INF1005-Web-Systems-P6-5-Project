@@ -24,7 +24,16 @@ try {
     $username = trim($_POST['username'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
-    
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new Exception("Invalid email format.");
+    }
+
+    $domain = substr(strrchr($email, "@"), 1);
+    if ($domain !== 'sit.singaporetech.edu.sg') {
+        throw new Exception("Only SIT email addresses (@sit.singaporetech.edu.sg) are allowed.");
+    }
+
     // Validate uniqueness
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
     $stmt->execute([$email, $username]);

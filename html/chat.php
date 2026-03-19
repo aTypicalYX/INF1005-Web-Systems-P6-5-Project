@@ -38,9 +38,9 @@ $match = $stmt->fetch();
 if (!$match) {
     die("Unauthorized access");
 }
-
+$otherUserId = $match['other_user_id'];
 $otherUserName = $match['display_name'];
-$otherUserPic  = $match['main_image'] 
+$otherUserPic  = $match['main_image']
     ? '/images/' . $match['main_image']
     : 'https://ui-avatars.com/api/?name=' . urlencode($otherUserName);
 
@@ -60,8 +60,10 @@ require_once 'includes/header.php';
     <!-- Header -->
     <div class="chat-header">
         <a href="messages.php" class="chat-back-btn" title="Back to messages">⬅</a>
-        <img src="<?= htmlspecialchars($otherUserPic) ?>" alt="">
-        <strong><?= htmlspecialchars($otherUserName) ?></strong>
+        <a href="profile.php?id=<?= $match['other_user_id'] ?>&from=chat" class="chat-header-profile" title="View profile">
+            <img src="<?= htmlspecialchars($otherUserPic) ?>" alt="<?= htmlspecialchars($otherUserName) ?>">
+            <strong><?= htmlspecialchars($otherUserName) ?></strong>
+        </a>
     </div>
 
     <!-- Messages -->

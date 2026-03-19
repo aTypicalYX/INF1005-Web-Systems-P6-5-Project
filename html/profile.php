@@ -17,6 +17,7 @@ if (!function_exists('h')) {
 
 // ── Get profile ID from URL ──
 $profileId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+$fromChat = isset($_GET['from']) && $_GET['from'] === 'chat';
 
 if ($profileId === 0) {
     header('Location: profiles.php');
@@ -53,7 +54,6 @@ try {
 // ── 404 if user/profile not found ──
 if (!$profile) {
     http_response_code(404);
-    // You can make a proper 404 page later — for now redirect back
     header('Location: profiles.php');
     exit();
 }
@@ -150,6 +150,7 @@ require_once 'includes/header.php';
         </a>
 
         <!-- Pass / Like -->
+        <?php if (!$fromChat): ?>
         <div class="vp-hero-actions" aria-label="Profile actions">
             <button class="vp-action-btn vp-btn-pass"
                     aria-label="Pass on <?= h($profile['name']) ?>" title="Pass"
@@ -169,6 +170,7 @@ require_once 'includes/header.php';
                 </svg>
             </button>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- ── Scrollable content ── -->
