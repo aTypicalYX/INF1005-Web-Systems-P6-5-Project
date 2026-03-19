@@ -12,7 +12,8 @@ if (!function_exists('h')) {
     }
 }
 
-require_once '/var/www/config/db.php';
+$dbPath = file_exists(__DIR__ . '/../config/db.php') ? __DIR__ . '/../config/db.php' : dirname(__DIR__) . '/config/db.php';
+require_once $dbPath;
 $currentUser = $_SESSION['user_id'];
 
 // ══════════════════════════════════════════════════════
@@ -37,14 +38,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $favSong = $_POST['favourite_song'] ?? '';
     $lookingFor  = $_POST['looking_for'] ?? '';
     $showMe      = $_POST['show_me'] ?? '';
-    $ageMin      = $_POST['age_min'] ?? null;
-    $ageMax      = $_POST['age_max'] ?? null;
+    $ageMin = (int)($_POST['age_min'] ?? 18);
+    $ageMax = (int)($_POST['age_max'] ?? 99);
+
+    if ($ageMin < 18) $ageMin = 18;
+    if ($ageMax > 99) $ageMax = 99;
+    if ($ageMin > $ageMax) {
+        // Swap them if the user bypassed the frontend validation
+        $temp = $ageMin;
+        $ageMin = $ageMax;
+        $ageMax = $temp;
+    }
 
     try {
         $pdo->beginTransaction();
 
         $stmt = $pdo->prepare("UPDATE users SET first_name = ?, last_name = ? WHERE id = ?");
         $stmt->execute([$firstName, $lastName, $currentUser]);
+
+        // FETCH CURRENT PHOTOS BEFORE UPDATING (To prevent memory leaks)
+        $stmt = $pdo->prepare("SELECT main_image, image_2, image_3, image_4, image_5, image_6 FROM profile WHERE user_id = ?");
+        $stmt->execute([$currentUser]);
+        $currentPhotos = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $uploadDir = __DIR__ . '/images/';
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
@@ -61,11 +76,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (move_uploaded_file($_FILES[$col]['tmp_name'], $uploadDir . $newName)) {
                         $imageUpdates[] = "$col = ?";
                         $imageParams[] = $newName;
+                        
+                        // DELETE the old photo from the server
+                        if (!empty($currentPhotos[$col]) && file_exists($uploadDir . $currentPhotos[$col])) {
+                            unlink($uploadDir . $currentPhotos[$col]);
+                        }
                     }
                 }
             } 
             elseif (!empty($_POST['remove_' . $col]) && $_POST['remove_' . $col] === '1' && $col !== 'main_image') {
                 $imageUpdates[] = "$col = NULL";
+                
+                // DELETE the photo from the server when user clicks 'X'
+                if (!empty($currentPhotos[$col]) && file_exists($uploadDir . $currentPhotos[$col])) {
+                    unlink($uploadDir . $currentPhotos[$col]);
+                }
             }
         }
 
@@ -87,13 +112,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pdo->prepare("DELETE FROM user_interests WHERE user_id = ?")->execute([$currentUser]);
         if ($interests) {
-            $interestIds = explode(',', $interests);
-            $stmt = $pdo->prepare("INSERT INTO user_interests (user_id, interest_id) VALUES (?, ?)");
-            foreach ($interestIds as $id) {
-                $stmt->execute([$currentUser, $id]);
-            }
-        }
+        $interestIds = explode(',', $interests);
+        $stmt = $pdo->prepare("INSERT INTO user_interests (user_id, interest_id) VALUES (?, ?)");
         
+        // Slice the array to guarantee an absolute maximum of 5 inserts
+        foreach (array_slice($interestIds, 0, 5) as $id) {
+            $stmt->execute([$currentUser, $id]);
+        }
+    }
+            
         $pdo->commit();
         $successMessage = "Profile and photos updated successfully!";
     } catch (Exception $e) {
@@ -312,7 +339,7 @@ require_once 'includes/header.php';
                             </div>
                         </div>
 
-                        <div class="mb-2">
+                        <div class="mb-2 position-relative">
                             <label class="form-label text-muted fw-bold mb-3">Your Interests (Max 5)</label>
                             <div id="selected-interests" class="mb-3 d-flex flex-wrap">
                                 <?php
@@ -337,6 +364,10 @@ require_once 'includes/header.php';
                                     <option value="<?= $interest['id'] ?>"><?= h($interest['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
+                            
+                            <div class="invalid-feedback fw-bold mt-2" id="interest-error">
+                                <i class="bi bi-exclamation-circle-fill"></i> Maximum of 5 interests allowed.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -671,11 +702,26 @@ require_once 'includes/header.php';
 
     interestSelect.addEventListener('change', () => {
         const currentCount = selectedContainer.querySelectorAll('.tag-span').length;
+        const wrapper = interestSelect.nextElementSibling; // Grabs the generated custom dropdown box
+        
         if (currentCount >= MAX_INTERESTS) {
-            alert("You can select up to 5 interests.");
+            // Trigger the red border and show the inline text!
+            if (wrapper && wrapper.classList.contains('custom-dropdown-wrapper')) {
+                wrapper.classList.add('is-invalid');
+            }
+            
             interestSelect.value = "";
+            
+            // Automatically clear the error after 3 seconds for better UX
+            setTimeout(() => {
+                if (wrapper) wrapper.classList.remove('is-invalid');
+            }, 3000);
+            
             return;
         }
+
+        // Clear error immediately if they are under the limit
+        if (wrapper) wrapper.classList.remove('is-invalid');
 
         const selectedOption = interestSelect.options[interestSelect.selectedIndex];
         const interestName = selectedOption.text;
@@ -699,6 +745,10 @@ require_once 'includes/header.php';
         if (e.target.classList.contains('remove-tag')) {
             e.target.parentElement.remove();
             updateHiddenInterests();
+            
+            // Instantly clear the error state if they delete a tag
+            const wrapper = interestSelect.nextElementSibling;
+            if (wrapper) wrapper.classList.remove('is-invalid');
         }
     });
 

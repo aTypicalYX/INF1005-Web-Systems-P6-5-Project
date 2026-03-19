@@ -213,8 +213,8 @@ require_once 'includes/header.php';
                                     <select class="custom-select" name="show_me" required>
                                         <option value="" disabled selected>Select...</option>
                                         <option value="Everyone">Everyone</option>
-                                        <option value="Women">Women</option>
-                                        <option value="Men">Men</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Male">Male</option>
                                     </select>
                                     <div class="invalid-feedback fw-bold">Required.</div>
                                 </div>
