@@ -100,6 +100,11 @@ function navClass(string $page, string $active): string {
                                         <span aria-hidden="true"><i class="fa-solid fa-comment" style="color: var(--primary-pink);"></i></span> Messages
                                     </a>
                                 </li>
+                                <li>
+                                    <a class="dropdown-item" href="edit-password.php">
+                                        <span aria-hidden="true"><i class="fa-solid fa-lock" style="color: var(--primary-pink);"></i></span> Edit Password
+                                    </a>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <a class="dropdown-item text-danger" href="logout.php">

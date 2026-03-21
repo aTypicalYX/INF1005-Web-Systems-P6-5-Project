@@ -12,6 +12,7 @@ if (!file_exists($dbPath)) {
     exit;
 }
 require_once $dbPath;
+require_once '/var/www/html/includes/profanity.php';
 
 try {
     if (!isset($pdo) || $pdo === null) {
@@ -32,6 +33,24 @@ try {
     $domain = substr(strrchr($email, "@"), 1);
     if ($domain !== 'sit.singaporetech.edu.sg') {
         throw new Exception("Only SIT email addresses (@sit.singaporetech.edu.sg) are allowed.");
+    }
+
+    // Profanity check on registration fields
+    $fieldsToCheck = [
+        'First name'    => $firstName,
+        'Last name'     => $lastName,
+        'Username'      => $username,
+        'Display name'  => trim($_POST['display_name'] ?? ''),
+        'Biography'     => trim($_POST['biography'] ?? ''),
+        'Location'      => trim($_POST['location'] ?? ''),
+        'Occupation'    => trim($_POST['occupation'] ?? ''),
+        'Favourite song'=> trim($_POST['favourite_song'] ?? ''),
+    ];
+
+    foreach ($fieldsToCheck as $fieldName => $value) {
+        if (containsProfanity($value, $profanityList, $wholeWordOnly)) {
+            throw new Exception("{$fieldName} contains inappropriate language. Please revise it.");
+        }
     }
 
     // Validate uniqueness

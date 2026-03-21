@@ -120,6 +120,7 @@ require_once 'includes/header.php';
         .catch(() => {
             showChatError('Failed to send message. Please try again.');
         });
+    })
 
     function showChatError(msg) {
         // Remove any existing error first

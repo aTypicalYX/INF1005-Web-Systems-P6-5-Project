@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '/var/www/config/db.php';
-require_once '/var/www/includes/profanity.php';
+require_once '/var/www/html/includes/profanity.php';
 
 if (!isset($_SESSION['user_id'])) exit();
 
@@ -13,7 +13,7 @@ if (!$message) exit();
 
 // Optional: validate match ownership here too
 // Profanity check — block message if it contains foul language
-if (containsProfanity($message, $profanityList)) {
+if (containsProfanity($message, $profanityList, $wholeWordOnly)) {
     http_response_code(422);
     echo json_encode(['error' => 'Your message contains inappropriate language.']);
     exit();
@@ -24,3 +24,4 @@ $stmt = $pdo->prepare("
     VALUES (?, ?, ?)
 ");
 $stmt->execute([$matchId, $userId, $message]);
+echo json_encode(['success' => true]);
