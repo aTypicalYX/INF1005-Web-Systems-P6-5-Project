@@ -12,7 +12,7 @@ if (!file_exists($dbPath)) {
     exit;
 }
 require_once $dbPath;
-require_once '/var/www/html/includes/profanity.php';
+require_once __DIR__ . '/includes/profanity.php'; // Updated to use __DIR__ for reliable pathing
 
 try {
     if (!isset($pdo) || $pdo === null) {
@@ -25,6 +25,14 @@ try {
     $username = trim($_POST['username'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
+
+    // Basic Account Constraints
+    if (strlen($password) < 8) {
+        throw new Exception("Password must be at least 8 characters long.");
+    }
+    if (!preg_match('/^[a-zA-Z0-9_]{3,20}$/', $username)) {
+        throw new Exception("Username must be between 3 and 20 characters and contain only letters, numbers, and underscores.");
+    }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         throw new Exception("Invalid email format.");
@@ -76,14 +84,27 @@ try {
     $finalImages = array_fill(0, 6, null); 
     $inputNames = ['main_image', 'image_2', 'image_3', 'image_4', 'image_5', 'image_6'];
     
+    $uploadedFiles = []; // IMPROVEMENT: Track files to delete if transaction fails
+    $finfo = new finfo(FILEINFO_MIME_TYPE); // IMPROVEMENT: Initialize MIME checker
+
     foreach ($inputNames as $index => $inputName) {
         if (isset($_FILES[$inputName]) && $_FILES[$inputName]['error'] === UPLOAD_ERR_OK) {
+            $tmpName = $_FILES[$inputName]['tmp_name'];
             $ext = strtolower(pathinfo($_FILES[$inputName]['name'], PATHINFO_EXTENSION));
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'avif'])) {
+            
+            // Strictly check the actual file contents, not just the name
+            $mime = $finfo->file($tmpName);
+            $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+            $allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+
+            if (in_array($ext, $allowedExts) && in_array($mime, $allowedMimes)) {
                 $newName = 'user_' . $userId . '_' . uniqid() . '.' . $ext;
-                if (move_uploaded_file($_FILES[$inputName]['tmp_name'], $uploadDir . $newName)) {
+                if (move_uploaded_file($tmpName, $uploadDir . $newName)) {
                     $finalImages[$index] = $newName;
+                    $uploadedFiles[] = $uploadDir . $newName; // Track it!
                 }
+            } else {
+                throw new Exception("Invalid file format uploaded for image slot " . ($index + 1));
             }
         }
     }
@@ -121,14 +142,12 @@ try {
     ]);
 
     // 6. Insert into `preferences` table
-    // Backend Sanity Check for Age limits
     $ageMin = (int)($_POST['age_min'] ?? 18);
     $ageMax = (int)($_POST['age_max'] ?? 99);
     
     if ($ageMin < 18) $ageMin = 18;
     if ($ageMax > 99) $ageMax = 99;
     if ($ageMin > $ageMax) {
-        // Swap them if the user somehow bypassed JS validation
         $temp = $ageMin;
         $ageMin = $ageMax;
         $ageMax = $temp;
@@ -159,6 +178,13 @@ try {
 } catch (Exception $e) {
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
+    }
+    
+    // IMPROVEMENT: Destroy any images that were uploaded if the database insertion failed
+    if (isset($uploadedFiles) && is_array($uploadedFiles)) {
+        foreach ($uploadedFiles as $file) {
+            if (file_exists($file)) unlink($file);
+        }
     }
     
     $_SESSION['old_signup'] = $_POST;

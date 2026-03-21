@@ -6,14 +6,13 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-require_once '/var/www/config/db.php';
+require_once __DIR__ . '/../config/db.php';
 
 if (!function_exists('h')) {
     function h(string $s): string {
         return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
     }
 }
-
 
 // ── Get profile ID from URL ──
 $profileId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -27,9 +26,10 @@ if ($profileId === 0) {
 // ── Fetch profile from DB ──
 $profile = null;
 try {
+    // IMPROVEMENT: COALESCE falls back to first_name if display_name is empty
     $stmt = $pdo->prepare("
         SELECT u.id,
-                p.display_name  AS name,
+                COALESCE(NULLIF(p.display_name, ''), u.first_name) AS name,
                 p.age,
                 p.location,
                 p.occupation,
@@ -69,7 +69,6 @@ if (!empty($profile['interests'])) {
 }
 
 // ── Build images list (hero + up to 5 extras) ──
-// image_1 is the hero. Extra images are image_2 through image_6.
 $heroImage  = $profile['image_1'] ?? null;
 $extraImages = [];
 for ($i = 2; $i <= 6; $i++) {
@@ -82,20 +81,13 @@ for ($i = 2; $i <= 6; $i++) {
 // Helper: resolve filename → web URL
 function imageUrl(?string $img): ?string {
     if (empty($img)) return null;
-    if (str_starts_with($img, 'http')) return $img; // full URL (test data)
-    return '/images/' . $img;                        // local file
+    if (str_starts_with($img, 'http')) return $img; 
+    
+    // IMPROVEMENT: Removed the leading slash to make pathing relative for safe cloud deployment
+    return 'images/' . $img;                        
 }
 
 // ── Fetch answered prompts from DB ──
-// SQL for when user_answers table is ready:
-//
-// SELECT q.question_text, a.answer_text
-// FROM user_answers a
-// JOIN questions q ON q.id = a.question_id
-// WHERE a.user_id = ?
-// ORDER BY a.id
-// LIMIT 6
-//
 $prompts = [];
 try {
     $stmtP = $pdo->prepare("
@@ -109,7 +101,7 @@ try {
     $stmtP->execute([$profileId]);
     $prompts = $stmtP->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    // Table doesn't exist yet — fall back to hardcoded prompts
+    // Fallback hardcoded prompts
     $prompts = [
         ['q' => 'My perfect Sunday looks like...',   'a' => 'Waking up at 10am, grabbing a flat white, then wandering around a hawker centre before ending up at a bookshop I\'ve never been to.'],
         ['q' => 'The way to my heart is...',         'a' => 'Recommending me a song I haven\'t heard yet. Bonus points if it becomes my new favourite.'],
@@ -126,7 +118,6 @@ require_once 'includes/header.php';
 
 <div class="vp-wrap">
 
-    <!-- ── Hero Image ── -->
     <div class="vp-hero" aria-label="Profile photo of <?= h($profile['name']) ?>">
 
         <?php $heroUrl = imageUrl($heroImage); ?>
@@ -143,7 +134,6 @@ require_once 'includes/header.php';
 
         <div class="vp-hero-fade" aria-hidden="true"></div>
 
-        <!-- Back button -->
         <a href="javascript:history.back()" class="vp-back-btn" aria-label="Go back">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -151,7 +141,6 @@ require_once 'includes/header.php';
             </svg>
         </a>
 
-        <!-- Pass / Like -->
         <?php if (!$fromChat): ?>
         <div class="vp-hero-actions" aria-label="Profile actions">
             <button class="vp-action-btn vp-btn-pass"
@@ -175,17 +164,14 @@ require_once 'includes/header.php';
         <?php endif; ?>
     </div>
 
-    <!-- ── Scrollable content ── -->
     <div class="vp-content">
 
-        <!-- Name + age -->
         <div class="vp-identity">
             <h1 class="vp-name">
                 <?= h($profile['name']) ?>,
                 <span class="vp-age"><?= h((string)$profile['age']) ?></span>
             </h1>
 
-            <!-- Location + occupation chips -->
             <?php if (!empty($profile['location']) || !empty($profile['occupation'])): ?>
             <p class="vp-meta">
                 <?php if (!empty($profile['location'])): ?>
@@ -210,20 +196,10 @@ require_once 'includes/header.php';
                 <?php endif; ?>
             </p>
             <?php endif; ?>
-
-            <!-- Tags -->
-            <!-- <?php if (!empty($tags)): ?>
-            <div class="vp-tags" aria-label="Interests and attributes">
-                <?php foreach ($tags as $tag): ?>
-                    <span class="vp-tag"><?= h($tag) ?></span>
-                <?php endforeach; ?>
-            </div>
-            <?php endif; ?>
-        </div> -->
+        </div>
 
         <div class="vp-divider" aria-hidden="true"></div>
 
-        <!-- Bio -->
         <?php if (!empty($profile['bio'])): ?>
         <section aria-label="About <?= h($profile['name']) ?>">
             <p class="vp-bio"><?= nl2br(h($profile['bio'])) ?></p>
@@ -231,7 +207,6 @@ require_once 'includes/header.php';
         <div class="vp-divider" aria-hidden="true"></div>
         <?php endif; ?>
 
-        <!-- ── Interleaved prompts + extra images ── -->
         <?php
         $totalSections = max(count($extraImages), count($prompts));
         for ($i = 0; $i < $totalSections; $i++):
@@ -328,7 +303,6 @@ document.querySelectorAll('.vp-prompt-card').forEach(card => {
             return;
         }
 
-        // TODO: wire to /api/send_reply.php when ready
         console.log('Reply to:', sendBtn.dataset.promptQ, '| Message:', msg);
 
         box.innerHTML = `
@@ -345,7 +319,6 @@ document.querySelectorAll('.vp-prompt-card').forEach(card => {
     });
 });
 
-// Pass / Like buttons — call swipe API then redirect back
 function fadeOutAndRedirect(url) {
     document.body.style.transition = 'opacity 0.35s ease';
     document.body.style.opacity    = '0';
@@ -358,7 +331,6 @@ document.querySelectorAll('.vp-btn-pass, .vp-btn-like').forEach(btn => {
         const direction = isLike ? 'like' : 'pass';
         const userId    = btn.dataset.userId;
 
-        // Await result BEFORE showing anything
         let isMatch = false;
         try {
             const res  = await fetch('/api/swipe.php', {
@@ -373,7 +345,6 @@ document.querySelectorAll('.vp-btn-pass, .vp-btn-like').forEach(btn => {
         }
 
         if (isMatch) {
-            // Match — skip LIKE overlay, show match popup instead
             const name = document.querySelector('.vp-name')
                 ?.firstChild?.textContent?.trim()?.replace(',','') ?? 'them';
             const overlay = document.createElement('div');
@@ -392,7 +363,6 @@ document.querySelectorAll('.vp-btn-pass, .vp-btn-like').forEach(btn => {
             setTimeout(() => fadeOutAndRedirect('profiles.php?t=' + Date.now()), 2000);
 
         } else {
-            // No match — show LIKE/NOPE overlay then redirect
             const overlay = document.createElement('div');
             overlay.setAttribute('aria-hidden', 'true');
             overlay.style.cssText = `
@@ -413,7 +383,6 @@ document.querySelectorAll('.vp-btn-pass, .vp-btn-like').forEach(btn => {
     });
 });
 
-// Inject keyframe for the overlay pop animation
 const style = document.createElement('style');
 style.textContent = `
     @keyframes overlayPop {

@@ -134,8 +134,8 @@ unset($_SESSION['success']);
                         <div class="trust-icon">
                             <i class="bi bi-chat-dots-fill"></i>
                         </div>
-                        <h5 class="fw-bold" style="color: var(--text-dark);">Anti-Ghosting Nudges</h5>
-                        <p class="text-muted small mb-0">Smart, gentle reminders to encourage active conversations and real, meaningful connections.</p>
+                        <h5 class="fw-bold" style="color: var(--text-dark);">People First</h5>
+                        <p class="text-muted small mb-0">We prioritize genuine human connections and ensure every user feels valued and respected.</p>
                     </div>
                 </div>
 

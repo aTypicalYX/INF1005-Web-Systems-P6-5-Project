@@ -44,11 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($ageMin < 18) $ageMin = 18;
     if ($ageMax > 99) $ageMax = 99;
     if ($ageMin > $ageMax) {
-        // Swap them if the user bypassed the frontend validation
         $temp = $ageMin;
         $ageMin = $ageMax;
         $ageMax = $temp;
     }
+
+    $filesToDelete = [];
 
     try {
         $pdo->beginTransaction();
@@ -56,7 +57,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("UPDATE users SET first_name = ?, last_name = ? WHERE id = ?");
         $stmt->execute([$firstName, $lastName, $currentUser]);
 
-        // FETCH CURRENT PHOTOS BEFORE UPDATING (To prevent memory leaks)
         $stmt = $pdo->prepare("SELECT main_image, image_2, image_3, image_4, image_5, image_6 FROM profile WHERE user_id = ?");
         $stmt->execute([$currentUser]);
         $currentPhotos = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -76,20 +76,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (move_uploaded_file($_FILES[$col]['tmp_name'], $uploadDir . $newName)) {
                         $imageUpdates[] = "$col = ?";
                         $imageParams[] = $newName;
-                        
-                        // DELETE the old photo from the server
-                        if (!empty($currentPhotos[$col]) && file_exists($uploadDir . $currentPhotos[$col])) {
-                            unlink($uploadDir . $currentPhotos[$col]);
+                        if (!empty($currentPhotos[$col])) {
+                            $filesToDelete[] = $uploadDir . $currentPhotos[$col];
                         }
                     }
                 }
             } 
             elseif (!empty($_POST['remove_' . $col]) && $_POST['remove_' . $col] === '1' && $col !== 'main_image') {
                 $imageUpdates[] = "$col = NULL";
-                
-                // DELETE the photo from the server when user clicks 'X'
-                if (!empty($currentPhotos[$col]) && file_exists($uploadDir . $currentPhotos[$col])) {
-                    unlink($uploadDir . $currentPhotos[$col]);
+                if (!empty($currentPhotos[$col])) {
+                    $filesToDelete[] = $uploadDir . $currentPhotos[$col];
                 }
             }
         }
@@ -110,19 +106,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("UPDATE preferences SET looking_for = ?, show_me = ?, age_min = ?, age_max = ? WHERE user_id = ?");
         $stmt->execute([$lookingFor, $showMe, $ageMin, $ageMax, $currentUser]);
 
+        // IMPROVEMENT: Robust empty string handling for interests array
         $pdo->prepare("DELETE FROM user_interests WHERE user_id = ?")->execute([$currentUser]);
-        if ($interests) {
-        $interestIds = explode(',', $interests);
-        $stmt = $pdo->prepare("INSERT INTO user_interests (user_id, interest_id) VALUES (?, ?)");
-        
-        // Slice the array to guarantee an absolute maximum of 5 inserts
-        foreach (array_slice($interestIds, 0, 5) as $id) {
-            $stmt->execute([$currentUser, $id]);
+        if (!empty($interests)) {
+            $interestIds = array_filter(array_map('intval', explode(',', $interests)));
+            if (!empty($interestIds)) {
+                $stmt = $pdo->prepare("INSERT INTO user_interests (user_id, interest_id) VALUES (?, ?)");
+                foreach (array_slice($interestIds, 0, 5) as $id) {
+                    $stmt->execute([$currentUser, $id]);
+                }
+            }
         }
-    }
             
         $pdo->commit();
         $successMessage = "Profile and photos updated successfully!";
+
+        foreach ($filesToDelete as $file) {
+            if (file_exists($file)) {
+                unlink($file);
+            }
+        }
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         $errorMessage = "Error saving profile: " . $e->getMessage();
@@ -158,7 +161,6 @@ try {
     $profile = [];
 }
 
-// -- Calculate Live Stats --
 $photoCount = 0;
 foreach (['main_image', 'image_2', 'image_3', 'image_4', 'image_5', 'image_6'] as $col) {
     if (!empty($profile[$col])) $photoCount++;
@@ -172,7 +174,6 @@ foreach ($keyFields as $field) {
     if (!empty($profile[$field])) $filledFields++;
 }
 $completionPct = count($keyFields) > 0 ? round(($filledFields / count($keyFields)) * 100) : 0;
-// --------------------------
 
 $activePage = 'profile';
 $pageTitle  = h($profile['first_name'] ?? 'Your') . '\'s Profile';
@@ -511,7 +512,6 @@ require_once 'includes/header.php';
         const wrapper = document.createElement('div');
         wrapper.className = 'custom-dropdown-wrapper form-control form-control-lg custom-input';
         wrapper.style.marginBottom = '0';
-        // Add a check to inherit the white background if it's inside the tinted card
         if (select.closest('[style*="background-color: #FFF0F5"]')) {
             wrapper.style.backgroundColor = '#FFFFFF';
         }
@@ -702,17 +702,15 @@ require_once 'includes/header.php';
 
     interestSelect.addEventListener('change', () => {
         const currentCount = selectedContainer.querySelectorAll('.tag-span').length;
-        const wrapper = interestSelect.nextElementSibling; // Grabs the generated custom dropdown box
+        const wrapper = interestSelect.nextElementSibling; 
         
         if (currentCount >= MAX_INTERESTS) {
-            // Trigger the red border and show the inline text!
             if (wrapper && wrapper.classList.contains('custom-dropdown-wrapper')) {
                 wrapper.classList.add('is-invalid');
             }
             
             interestSelect.value = "";
             
-            // Automatically clear the error after 3 seconds for better UX
             setTimeout(() => {
                 if (wrapper) wrapper.classList.remove('is-invalid');
             }, 3000);
@@ -720,7 +718,6 @@ require_once 'includes/header.php';
             return;
         }
 
-        // Clear error immediately if they are under the limit
         if (wrapper) wrapper.classList.remove('is-invalid');
 
         const selectedOption = interestSelect.options[interestSelect.selectedIndex];
@@ -746,13 +743,35 @@ require_once 'includes/header.php';
             e.target.parentElement.remove();
             updateHiddenInterests();
             
-            // Instantly clear the error state if they delete a tag
             const wrapper = interestSelect.nextElementSibling;
             if (wrapper) wrapper.classList.remove('is-invalid');
         }
     });
 
     updateHiddenInterests();
+
+    // IMPROVEMENT: Event Listeners for Live Text Preview Sync
+    const updatePreviewText = () => {
+        const fName = document.querySelector('input[name="first_name"]').value || 'Your Name';
+        const age = document.querySelector('input[name="age"]').value || 'Age';
+        const loc = document.querySelector('input[name="location"]').value || 'Location';
+        const occ = document.querySelector('input[name="occupation"]').value || 'Occupation';
+        const bio = document.querySelector('textarea[name="biography"]').value || 'Your bio will appear here...';
+
+        const nameEl = document.querySelector('.card-name');
+        if (nameEl) nameEl.innerHTML = `${fName}, <span id="liveAge">${age}</span>`;
+        
+        const metaEl = document.querySelector('.card-meta');
+        if (metaEl) metaEl.innerHTML = `<i class="bi bi-geo-alt-fill text-white"></i> ${loc} &bull; ${occ}`;
+
+        const bioEl = document.querySelector('.card-bio');
+        if (bioEl) bioEl.textContent = bio;
+    };
+
+    document.querySelectorAll('input[name="first_name"], input[name="age"], input[name="location"], input[name="occupation"], textarea[name="biography"]').forEach(el => {
+        el.addEventListener('input', updatePreviewText);
+    });
+
 </script>
 
 <?php require_once 'includes/footer.php'; ?>
