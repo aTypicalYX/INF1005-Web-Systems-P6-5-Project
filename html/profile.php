@@ -259,6 +259,24 @@ require_once 'includes/header.php';
         <?php endfor; ?>
 
         <div style="height:1.5rem" aria-hidden="true"></div>
+
+        <!-- Report link — shown to logged-in users viewing someone else's profile -->
+        <?php if ($profileId !== (int)$_SESSION['user_id']): ?>
+            <div class="vp-report-row">
+                <a href="report.php?user_id=<?= h((string)$profile['id']) ?>"
+                class="vp-report-link"
+                aria-label="Report <?= h($profile['name']) ?>'s profile">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                        <line x1="4" y1="22" x2="4" y2="15"/>
+                    </svg>
+                    Report this profile
+                </a>
+            </div>
+        <?php endif; ?>
+
     </div>
 </div>
 
