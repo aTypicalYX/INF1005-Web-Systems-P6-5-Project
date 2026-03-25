@@ -169,6 +169,23 @@ try {
             $stmtInt->execute([$userId, (int)$interestId]);
         }
     }
+    // 8. Insert into 'Answers' table
+    if (!empty($_POST['security_answers']) && is_array($_POST['security_answers'])) {
+        $stmtAns = $pdo->prepare('INSERT INTO Answers (qn_id, user_id, ans_text) VALUES (?, ?, ?)');
+        foreach ($_POST['security_answers'] as $qnID => $answertext) {
+            $trimmedAns = trim($answertext);
+
+            if ($trimmedAns != ' ') {
+                // check for profanity in answers
+                if (containsProfanity($trimmedAns, $profanityList, $wholeWordOnly)) {
+                    throw new Exception("One of your security answers contains inappropriate language.");
+                }
+
+                // Data persistence in database
+                $stmtAns->execute([(int) $qnID, $userId, $trimmedAns]);
+            }
+        }
+    }
 
     $pdo->commit();
     $_SESSION['success'] = "Account created! Welcome to S³, please log in.";

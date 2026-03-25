@@ -12,6 +12,7 @@ unset($_SESSION['error']);
 $old = $_SESSION['old_signup'] ?? [];
 
 $interests = [];
+$displayQuestions = []; // initialise an array for displaying questions
 $dbPath = file_exists(__DIR__ . '/../config/db.php') ? __DIR__ . '/../config/db.php' : dirname(__DIR__) . '/config/db.php';
 if (file_exists($dbPath)) {
     require_once $dbPath;
@@ -19,6 +20,10 @@ if (file_exists($dbPath)) {
         try {
             $stmt = $pdo->query("SELECT id, name FROM interests ORDER BY name ASC");
             $interests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Fetch 3 random Questions
+            $qStmt = $pdo->query("SELECT id, question_text FROM questions ORDER BY RAND() LIMIT 3");
+            $displayQuestions = $qStmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {} 
     }
 }
@@ -30,7 +35,14 @@ if (empty($interests)) {
         $interests[] = ['id' => $index + 1, 'name' => $name];
     }
 }
-
+// Fallback for questions if DB fails
+if (empty($displayQuestions)) {
+    $displayQuestions = [
+        ['id'=> 1, 'question_text' => "My secret talent is..."], // Question 1
+        ['id' => 2, 'question_text' => "The quickest way to my heart is..."], // Question 2
+        ['id' => 3, 'question_text' => "We'll get along if..."] // Question 3
+    ];
+}
 require_once 'includes/header.php';
 ?>
 
@@ -161,6 +173,26 @@ require_once 'includes/header.php';
                                 <textarea class="form-control custom-input" name="biography" rows="3" placeholder="Tell us about yourself..." required></textarea>
                                 <div class="invalid-feedback fw-bold">A short bio is required.</div>
                             </div>
+
+                    <!--PARKING SELECTION OF QUESTIONS BELOW-->
+                    <div class="mb-4">
+                                <h5 class="fw-bold mb-3">Profile Prompts</h5>
+                                <?php foreach ($displayQuestions as $index => $q): ?>
+                                    <div class="mb-3">
+                                        <label class="form-label text-muted small fw-bold">
+                                            <?= h($q['question_text']) ?>
+                                        </label>
+                                        <input type="hidden" name="question_id_<?= $index ?>" value="<?= $q['id'] ?>">
+                                        <textarea 
+                                            class="form-control custom-input" 
+                                            name="security_answers[<?= $q['id'] ?>]" 
+                                            rows="2" 
+                                            placeholder="Type your answer here..." 
+                                            required></textarea>
+                                        <div class="invalid-feedback fw-bold">Please answer this prompt!</div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>    
                             <div class="row g-3 mb-4">
                                 <div class="col-md-6">
                                     <label class="form-label text-muted fw-bold">Love Language</label>
