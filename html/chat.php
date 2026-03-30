@@ -76,7 +76,7 @@ require_once 'includes/header.php';
     </div>
 
     <!-- Messages -->
-    <div class="chat-box" id="chat-box" tabindex="0" aria-label="Chat messages"></div>
+    <div class="chat-box" id="chat-box" tabindex="0" aria-label="Chat messages">
         <?php foreach ($messages as $msg): ?>
             <div class="message <?= $msg['sender_id'] == $currentUser ? 'sent' : 'received' ?>"
                  data-id="<?= (int) $msg['id'] ?>">
