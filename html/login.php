@@ -1,6 +1,8 @@
 <?php
 session_start();
 
+$appConfig = require '/var/www/config/app.php';
+
 function h(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
@@ -16,21 +18,25 @@ $old = $_SESSION['old_login'] ?? ['email' => ''];
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Login page for Singapore Singles Society">
-    <meta name="author" content="Singapore Singles Society— INF1005">
+    <meta name="author" content="Singapore Singles Society — INF1005">
     <title>Login - Singapore Singles Society: S³</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
+    <!-- Google reCAPTCHA v2 -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
+
 <body>
     <div class="container" aria-label="Main navigation">
         <nav class="custom-navbar">
             <a href="index.php" class="brand-logo" aria-label="Singapore Singles Society home">S³</a>
-            
+
             <div class="nav-center">
                 <a href="index.php">Home</a>
                 <a href="about.php">About</a>
@@ -43,7 +49,7 @@ $old = $_SESSION['old_login'] ?? ['email' => ''];
             </div>
         </nav>
     </div>
-␊
+
     <main class="container mt-5 mb-5" style="flex: 1;">
         <div class="row justify-content-center">
             <div class="col-md-6 col-lg-5">
@@ -52,11 +58,23 @@ $old = $_SESSION['old_login'] ?? ['email' => ''];
                         <h2 class="text-center mb-4 fw-bold" style="color: var(--text-dark);">Welcome Back 👋</h2>
 
                         <?php if ($error !== ''): ?>
-                            <div class="alert alert-danger rounded-4" role="alert"><?= h($error) ?></div>
+                            <div class="d-flex justify-content-center mb-4 position-relative" id="errorAlert">
+                                <div class="custom-alert-pill error-pill" role="alert">
+                                    <i class="bi bi-exclamation-circle-fill me-2 fs-5"></i>
+                                    <span class="d-flex align-items-center mt-1"><?= h($error) ?></span>
+                                    <i class="bi bi-x ms-3 fs-4 alert-close-btn" onclick="this.closest('#errorAlert').remove();" title="Close"></i>
+                                </div>
+                            </div>
                         <?php endif; ?>
 
                         <?php if ($success !== ''): ?>
-                            <div class="alert alert-success rounded-4" role="alert"><?= h($success) ?></div>
+                            <div class="d-flex justify-content-center mb-4 position-relative" id="successAlert">
+                                <div class="custom-alert-pill success-pill" role="alert">
+                                    <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+                                    <span class="d-flex align-items-center mt-1"><?= h($success) ?></span>
+                                    <i class="bi bi-x ms-3 fs-4 alert-close-btn" onclick="this.closest('#successAlert').remove();" title="Close"></i>
+                                </div>
+                            </div>
                         <?php endif; ?>
 
                         <form id="loginForm" action="process_login.php" method="POST" novalidate>
@@ -64,58 +82,43 @@ $old = $_SESSION['old_login'] ?? ['email' => ''];
                                 <label for="email" class="form-label fw-bold text-muted">Email address or username</label>
                                 <input type="text" class="form-control form-control-lg rounded-3 bg-light border-0" id="email" name="email" value="<?= h((string) $old['email']) ?>" placeholder="you@email.com or username" required>
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label for="password" class="form-label fw-bold text-muted">Password</label>
                                 <input type="password" class="form-control form-control-lg rounded-3 bg-light border-0" id="password" name="password" placeholder="••••••••" required>
                             </div>
+
+                            <!-- Forgot Password Link -->
+                            <div class="text-end mb-3">
+                                <a href="forgot-password.php" style="color: var(--primary-pink); font-weight: 600; text-decoration: none; font-size: 0.9rem;">
+                                    Forgot password?
+                                </a>
+                            </div>
+
+                            <!-- Google reCAPTCHA v2 Widget -->
+                            <!-- ⚠️ Replace YOUR_SITE_KEY with your actual reCAPTCHA Site Key -->
+                            <div class="mb-4 d-flex justify-content-center">
+                                <div class="g-recaptcha" data-sitekey="<?= htmlspecialchars($appConfig['recaptcha_site_key'], ENT_QUOTES, 'UTF-8') ?>"></div>
+                            </div>
+
                             <button type="submit" class="btn-solid-custom w-100 d-block text-center mb-3" style="font-size: 1.1rem; padding: 0.8rem;">Login to S³</button>
                         </form>
+
                         <div class="text-center mt-4">
-                            <span class="text-muted">New to S³?</span> <a href="signup.php" style="color: var(--primary-pink); font-weight: 700; text-decoration: none;">Create an account</a>
+                            <span class="text-muted">New to S³?</span>
+                            <a href="signup.php" style="color: var(--primary-pink); font-weight: 700; text-decoration: none;">Create an account</a>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
-    
 
-    <footer class="custom-footer mt-auto">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4 mb-4 mb-md-0">
-                    <a href="index.php" class="brand-logo d-inline-block mb-3">S³</a>
-                    <p class="text-muted pe-md-5">A safe, fun space to meet people who share your vibe. Based in Singapore.</p>
-                </div>
-                
-                <div class="col-md-2 col-6 mb-4 mb-md-0">
-                    <h5 class="footer-heading">Explore</h5>
-                    <a href="#" class="footer-link">Browse Profiles</a>
-                    <a href="#" class="footer-link">Pricing</a>
-                    <a href="login.php" class="footer-link">Sign In</a>
-                </div>
-                
-                <div class="col-md-2 col-6 mb-4 mb-md-0">
-                    <h5 class="footer-heading">Company</h5>
-                    <a href="about.php" class="footer-link">About Us</a>
-                    <a href="#" class="footer-link">Blog</a>
-                    <a href="#" class="footer-link">Careers</a>
-                </div>
-                
-                <div class="col-md-3 col-12">
-                    <h5 class="footer-heading">Support</h5>
-                    <a href="#" class="footer-link">Safety Centre</a>
-                    <a href="#" class="footer-link">Privacy Policy</a>
-                    <a href="#" class="footer-link">Terms of Service</a>
-                </div>
-            </div>
-            <hr class="footer-divider">
-            <div class="text-center text-muted" style="font-size: 0.9rem;">
-                <p class="mb-0">&copy; 2026 Singapore Singles Society S³. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
+
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
     <script src="js/main.js"></script>
 </body>
+
+<?php require_once 'includes/footer.php'; ?>
+
 </html>

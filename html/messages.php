@@ -47,7 +47,9 @@ try {
             ELSE m.user_1_id
         END
         JOIN profile p ON p.user_id = u.id
-        WHERE m.user_1_id = ? OR m.user_2_id = ?
+        LEFT JOIN bans b ON b.user_id = u.id
+        WHERE (m.user_1_id = ? OR m.user_2_id = ?)
+        AND b.id IS NULL
         ORDER BY m.created_at DESC
     ");
     $stmt->execute([$currentUser, $currentUser, $currentUser, $currentUser]);
@@ -63,7 +65,7 @@ require_once 'includes/header.php';
 
     <div class="matches-header">
         <p class="matches-label" aria-hidden="true">✦ Messages</p>
-        <h1 class="matches-title">Your Sparks</h1>
+        <h1 class="matches-title">Your Sparks <i class="fa-solid fa-bolt-lightning fa-bounce" style="color: var(--primary-pink);"></i></h1>
         <p class="matches-subtitle">
             <?php if (!empty($matches)): ?>
                 <?= count($matches) ?> mutual match<?= count($matches) !== 1 ? 'es' : '' ?> so far

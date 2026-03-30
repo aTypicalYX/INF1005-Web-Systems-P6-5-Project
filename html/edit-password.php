@@ -1,4 +1,15 @@
 <?php
+
+// Harden the session cookie before session_start()
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',
+    'secure'   => true,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+
+
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
@@ -11,11 +22,27 @@ $pageTitle  = 'Edit Password';
 
 require_once '/var/www/config/db.php';
 
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $error   = $_SESSION['error'] ?? '';
 $success = $_SESSION['success'] ?? '';
 unset($_SESSION['error'], $_SESSION['success']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+
+    // CSRF Verification
+    $submittedToken = (string) ($_POST['csrf_token'] ?? '');
+    if ($submittedToken === '' || !hash_equals($_SESSION['csrf_token'], $submittedToken)) {
+        $_SESSION['error'] = 'Invalid request. Please try again.';
+        header('Location: edit-password.php');
+        exit();
+    }
+
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
     $current  = $_POST['current_password'] ?? '';
     $new      = $_POST['new_password'] ?? '';
     $confirm  = $_POST['confirm_password'] ?? '';
@@ -71,25 +98,30 @@ require_once 'includes/header.php';
             <p class="text-muted mb-4">Choose a strong password to keep your account secure.</p>
 
             <?php if ($error): ?>
-                <div class="alert alert-danger rounded-4"><?= htmlspecialchars($error) ?></div>
+                <div class="alert alert-danger rounded-4"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
 
             <?php if ($success): ?>
-                <div class="alert alert-success rounded-4"><?= htmlspecialchars($success) ?></div>
+                <div class="alert alert-success rounded-4"><?= htmlspecialchars($success, ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
 
             <form method="POST" action="edit-password.php">
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>"
+                >
                 <div class="mb-3">
-                    <label class="form-label text-muted fw-bold">Current Password</label>
-                    <input type="password" name="current_password" class="form-control form-control-lg custom-input" required>
+                     <label for="current_password" class="form-label text-muted fw-bold">Current Password</label>
+                    <input type="password" id="current_password" name="current_password" class="form-control form-control-lg custom-input" autocomplete="current-password" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label text-muted fw-bold">New Password</label>
-                    <input type="password" name="new_password" class="form-control form-control-lg custom-input" minlength="8" required>
+                    <label for="new_password" class="form-label text-muted fw-bold">New Password</label>
+                    <input type="password" id="new_password" name="new_password" class="form-control form-control-lg custom-input" autocomplete="new-password" minlength="8" required>
                 </div>
                 <div class="mb-4">
-                    <label class="form-label text-muted fw-bold">Confirm New Password</label>
-                    <input type="password" name="confirm_password" class="form-control form-control-lg custom-input" minlength="8" required>
+                    <label for="confirm_password" class="form-label text-muted fw-bold">Confirm New Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-control form-control-lg custom-input" autocomplete="new-password" minlength="8" required>
                 </div>
                 <button type="submit" class="btn-solid-custom w-100 py-3">Update Password</button>
             </form>

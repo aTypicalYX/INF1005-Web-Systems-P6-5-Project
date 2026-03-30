@@ -6,10 +6,11 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-require_once __DIR__ . '/../config/db.php';
+require_once '../config/db.php'; // Ensure correct path to your DB config
 
 if (!function_exists('h')) {
-    function h(string $s): string {
+    function h(string $s): string
+    {
         return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
     }
 }
@@ -23,16 +24,24 @@ if ($profileId === 0) {
     exit();
 }
 
-// ── Fetch profile from DB ──
+// ── Fetch Extended Profile Data ──
 $profile = null;
 try {
-    // IMPROVEMENT: COALESCE falls back to first_name if display_name is empty
     $stmt = $pdo->prepare("
         SELECT u.id,
-                COALESCE(NULLIF(p.display_name, ''), u.first_name) AS name,
+                p.display_name  AS name,
                 p.age,
+                p.gender,
+                p.pronouns,
                 p.location,
                 p.occupation,
+                p.height,
+                p.education,
+                p.love_language,
+                p.pets,
+                p.workout,
+                p.social_media,
+                p.favourite_song,
                 p.biography     AS bio,
                 p.main_image    AS image_1,
                 p.image_2,
@@ -43,372 +52,393 @@ try {
                 (SELECT GROUP_CONCAT(i.name ORDER BY i.name SEPARATOR ',')
                     FROM user_interests ui
                     JOIN interests i ON i.id = ui.interest_id
-                    WHERE ui.user_id = u.id) AS interests
+                    WHERE ui.user_id = u.id) AS interests,
+                pref.looking_for  /* <-- ADDED THIS */
         FROM users u
         JOIN profile p ON p.user_id = u.id
+        LEFT JOIN preferences pref ON pref.user_id = u.id /* <-- ADDED THIS JOIN */
         WHERE u.id = ?
-        LIMIT 1
     ");
     $stmt->execute([$profileId]);
     $profile = $stmt->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    $profile = null;
+    // Error handling
 }
 
-// ── 404 if user/profile not found ──
 if (!$profile) {
-    http_response_code(404);
-    header('Location: profiles.php');
+    $pageTitle = "Profile Not Found";
+    require_once 'includes/header.php';
+    echo "
+    <div class='container text-center' style='margin-top: 15vh; min-height: 50vh;'>
+        <div class='mb-4' style='font-size: 4rem; color: #ccc;'><i class='bi bi-person-x-fill'></i></div>
+        <h2 class='fw-bold' style='color: var(--text-dark);'>Profile not found</h2>
+        <p class='text-muted mb-4'>This user may have deleted their account or you followed a broken link.</p>
+        <a href='profiles.php' class='btn-solid-custom px-4 py-2 text-decoration-none'>Back to Swiping</a>
+    </div>";
+    require_once 'includes/footer.php';
     exit();
 }
 
-// ── Build tags ──
-$tags = [];
-if (!empty($profile['interests'])) {
-    $tags = array_map('trim', explode(',', $profile['interests']));
-}
-
-// ── Build images list (hero + up to 5 extras) ──
-$heroImage  = $profile['image_1'] ?? null;
-$extraImages = [];
-for ($i = 2; $i <= 6; $i++) {
-    $key = 'image_' . $i;
-    if (!empty($profile[$key])) {
-        $extraImages[] = $profile[$key];
+// ── Ban check — non-admins cannot view banned profiles ──
+if (($_SESSION['role'] ?? '') !== 'admin') {
+    try {
+        $banStmt = $pdo->prepare("SELECT id FROM bans WHERE user_id = ? LIMIT 1");
+        $banStmt->execute([$profileId]);
+        if ($banStmt->fetch()) {
+            header('Location: profiles.php');
+            exit();
+        }
+    } catch (Exception $e) {
+        // Fail open — don't block on DB error
     }
 }
 
-// Helper: resolve filename → web URL
-function imageUrl(?string $img): ?string {
-    if (empty($img)) return null;
-    if (str_starts_with($img, 'http')) return $img; 
-    
-    // IMPROVEMENT: Removed the leading slash to make pathing relative for safe cloud deployment
-    return 'images/' . $img;                        
-}
-
-// ── Fetch answered prompts from DB ──
-$prompts = [];
+// ── Fetch Answers ──
+$answers = [];
 try {
-    $stmtP = $pdo->prepare("
-        SELECT q.question_text AS q, a.answer_text AS a
-        FROM user_answers a
-        JOIN questions q ON q.id = a.question_id
+    $stmt = $pdo->prepare("
+        SELECT q.q_text, a.ans_text 
+        FROM Answers a
+        JOIN questions q ON a.qn_id = q.qn_id
         WHERE a.user_id = ?
-        ORDER BY a.id
-        LIMIT 6
     ");
-    $stmtP->execute([$profileId]);
-    $prompts = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute([$profileId]);
+    $answers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    // Fallback hardcoded prompts
-    $prompts = [
-        ['q' => 'My perfect Sunday looks like...',   'a' => 'Waking up at 10am, grabbing a flat white, then wandering around a hawker centre before ending up at a bookshop I\'ve never been to.'],
-        ['q' => 'The way to my heart is...',         'a' => 'Recommending me a song I haven\'t heard yet. Bonus points if it becomes my new favourite.'],
-        ['q' => 'I\'m weirdly passionate about...', 'a' => 'Mechanical keyboards. I have too many. My colleagues hate me.'],
-        ['q' => 'A life goal of mine is...',         'a' => 'To build something people actually use every day — could be an app, could be a really good sandwich shop.'],
-        ['q' => 'My most controversial opinion is...','a' => 'Pineapple on pizza is fine actually and I will die on this hill.'],
-    ];
 }
 
-$activePage = 'discover';
-$pageTitle  = h($profile['name']) . '\'s Profile';
+// Gather secondary images
+$images = [];
+foreach (['image_2', 'image_3', 'image_4', 'image_5', 'image_6'] as $col) {
+    if (!empty($profile[$col])) {
+        $images[] = $profile[$col];
+    }
+}
+
+// Create the interleaved sequence of Prompts and Images
+$displayItems = [];
+$maxLength = max(count($images), count($answers));
+for ($i = 0; $i < $maxLength; $i++) {
+    if (isset($answers[$i])) {
+        $displayItems[] = ['type' => 'prompt', 'data' => $answers[$i], 'idx' => $i];
+    }
+    if (isset($images[$i])) {
+        $displayItems[] = ['type' => 'image', 'data' => $images[$i]];
+    }
+}
+
+$pageTitle = h($profile['name']) . "'s Profile";
 require_once 'includes/header.php';
 ?>
 
-<div class="vp-wrap">
+<main class="vp-main" style="background-color: #FAFAFA; min-height: 100vh;">
 
-    <div class="vp-hero" aria-label="Profile photo of <?= h($profile['name']) ?>">
-
-        <?php $heroUrl = imageUrl($heroImage); ?>
-        <?php if ($heroUrl): ?>
-            <img src="<?= h($heroUrl) ?>"
-                 alt="Profile photo of <?= h($profile['name']) ?>"
-                 class="vp-hero-img">
+    <div class="vp-nav">
+        <?php if ($fromChat): ?>
+            <a href="chat.php?id=<?= $profileId ?>" class="vp-back-btn" aria-label="Back to chat">
+                <i class="bi bi-chevron-left"></i>
+            </a>
         <?php else: ?>
-            <div class="vp-hero-placeholder" aria-hidden="true"></div>
-            <div class="vp-hero-initials" aria-hidden="true">
-                <?= h(mb_substr($profile['name'], 0, 1)) ?>
-            </div>
-        <?php endif; ?>
-
-        <div class="vp-hero-fade" aria-hidden="true"></div>
-
-        <a href="javascript:history.back()" class="vp-back-btn" aria-label="Go back">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-        </a>
-
-        <?php if (!$fromChat): ?>
-        <div class="vp-hero-actions" aria-label="Profile actions">
-            <button class="vp-action-btn vp-btn-pass"
-                    aria-label="Pass on <?= h($profile['name']) ?>" title="Pass"
-                    data-user-id="<?= h((string)$profile['id']) ?>">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-            <button class="vp-action-btn vp-btn-like"
-                    aria-label="Like <?= h($profile['name']) ?>" title="Like"
-                    data-user-id="<?= h((string)$profile['id']) ?>">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <polyline points="20 6 9 17 4 12"/>
-                </svg>
-            </button>
-        </div>
+            <a href="profiles.php" class="vp-back-btn" aria-label="Back to swipe">
+                <i class="bi bi-chevron-left"></i>
+            </a>
         <?php endif; ?>
     </div>
 
-    <div class="vp-content">
+    <div class="vp-wrap pb-5 mb-5 mt-3">
 
-        <div class="vp-identity">
-            <h1 class="vp-name">
-                <?= h($profile['name']) ?>,
-                <span class="vp-age"><?= h((string)$profile['age']) ?></span>
-            </h1>
-
-            <?php if (!empty($profile['location']) || !empty($profile['occupation'])): ?>
-            <p class="vp-meta">
+        <div class="vp-photo-card shadow-sm mb-4">
+            <img src="<?= h(empty($profile['image_1']) ? 'images/Default.webp' : 'images/' . $profile['image_1']) ?>"
+                alt="<?= h($profile['name']) ?>">
+            <div class="vp-photo-overlay">
+                <h1 class="vp-name">
+                    <?= h($profile['name']) ?>
+                    <?php if (!empty($profile['age'])): ?>
+                        <span class="vp-age"><?= h((string)$profile['age']) ?></span>
+                    <?php endif; ?>
+                </h1>
                 <?php if (!empty($profile['location'])): ?>
-                <span class="vp-meta-chip">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                        <circle cx="12" cy="10" r="3"/>
-                    </svg>
-                    <?= h($profile['location']) ?>
-                </span>
+                    <p class="vp-location mb-0">
+                        <i class="bi bi-geo-alt-fill"></i> <?= h($profile['location']) ?>
+                    </p>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="vp-info-card">
+            <h6 class="vp-section-title">The Vitals</h6>
+            <div class="vp-vitals-grid mb-3">
+                <?php if (!empty($profile['pronouns'])): ?>
+                    <div class="vp-vital-pill"><i class="bi bi-person-badge"></i> <?= h($profile['pronouns']) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($profile['height'])): ?>
+                    <div class="vp-vital-pill"><i class="bi bi-rulers"></i> <?= h((string)$profile['height']) ?> cm</div>
                 <?php endif; ?>
                 <?php if (!empty($profile['occupation'])): ?>
-                <span class="vp-meta-chip">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="2" y="7" width="20" height="14" rx="2"/>
-                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-                    </svg>
-                    <?= h($profile['occupation']) ?>
-                </span>
+                    <div class="vp-vital-pill"><i class="bi bi-briefcase-fill"></i> <?= h($profile['occupation']) ?></div>
                 <?php endif; ?>
-            </p>
+                <?php if (!empty($profile['education'])): ?>
+                    <div class="vp-vital-pill"><i class="bi bi-mortarboard-fill"></i> <?= h($profile['education']) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($profile['gender'])): ?>
+                    <div class="vp-vital-pill"><i class="bi bi-gender-ambiguous"></i> <?= h($profile['gender']) ?></div>
+                <?php endif; ?>
+            </div>
+
+            <?php if (!empty($profile['interests'])): ?>
+                <h6 class="vp-section-title mt-4">Interests</h6>
+                <div class="vp-vitals-grid">
+                    <?php
+                    $tags = explode(',', $profile['interests']);
+                    foreach ($tags as $tag):
+                        if (trim($tag)):
+                    ?>
+                            <span class="vp-vital-pill" style="background: rgba(216, 27, 96, 0.05); color: var(--primary-pink); border-color: rgba(216, 27, 96, 0.1);">
+                                <?= h(trim($tag)) ?>
+                            </span>
+                    <?php endif;
+                    endforeach; ?>
+                </div>
             <?php endif; ?>
         </div>
 
-        <div class="vp-divider" aria-hidden="true"></div>
-
-        <?php if (!empty($profile['bio'])): ?>
-        <section aria-label="About <?= h($profile['name']) ?>">
-            <p class="vp-bio"><?= nl2br(h($profile['bio'])) ?></p>
-        </section>
-        <div class="vp-divider" aria-hidden="true"></div>
-        <?php endif; ?>
-
         <?php
-        $totalSections = max(count($extraImages), count($prompts));
-        for ($i = 0; $i < $totalSections; $i++):
+        $itemCount = 0;
+        $bioShown = false;
+        $musicShown = false;
+        $intentShown = false;
+        $loveShown = false;
+
+        foreach ($displayItems as $item):
+            $itemCount++;
         ?>
 
-            <?php if (isset($prompts[$i])): ?>
-            <div class="vp-prompt-card"
-                 role="button"
-                 tabindex="0"
-                 aria-expanded="false"
-                 aria-label="Reply to: <?= h($prompts[$i]['q']) ?>"
-                 data-idx="<?= $i ?>">
-
-                <span class="vp-prompt-label" aria-hidden="true">💬</span>
-                <p class="vp-prompt-q"><?= h($prompts[$i]['q']) ?></p>
-                <p class="vp-prompt-a"><?= h($prompts[$i]['a']) ?></p>
-                <div class="vp-tap-hint" aria-hidden="true">Tap to reply →</div>
-
-                <div class="vp-reply-box" id="reply-<?= $i ?>" hidden aria-hidden="true">
-                    <textarea
-                        class="vp-reply-textarea"
-                        rows="3"
-                        maxlength="500"
-                        placeholder="Say something to <?= h($profile['name']) ?>..."
-                        aria-label="Your reply to: <?= h($prompts[$i]['q']) ?>"></textarea>
-                    <div class="vp-reply-footer">
-                        <span class="vp-chars" id="chars-<?= $i ?>">0 / 500</span>
-                        <button class="vp-send-btn"
-                                data-profile-id="<?= h((string)$profile['id']) ?>"
-                                data-prompt-q="<?= h($prompts[$i]['q']) ?>"
-                                aria-label="Send reply">
-                            Send
-                        </button>
+            <?php if ($itemCount === 1 && !$intentShown && !empty($profile['looking_for'])): $intentShown = true; ?>
+                <div class="vp-intent-card">
+                    <div class="intent-icon-wrapper"><i class="bi bi-search-heart"></i></div>
+                    <div class="intent-info">
+                        <span class="intent-label">I'm Looking For</span>
+                        <span class="intent-value"><?= h($profile['looking_for']) ?></span>
                     </div>
                 </div>
-            </div>
             <?php endif; ?>
 
-            <?php if (isset($extraImages[$i])): ?>
-            <?php $extraUrl = imageUrl($extraImages[$i]); ?>
-            <?php if ($extraUrl): ?>
-            <div class="vp-photo-block">
-                <img src="<?= h($extraUrl) ?>"
-                     alt="Photo of <?= h($profile['name']) ?>"
-                     class="vp-photo" loading="lazy">
-            </div>
+            <?php if ($itemCount === 2 && !$bioShown): $bioShown = true; ?>
+                <div class="vp-info-card">
+                    <?php if (!empty($profile['bio'])): ?>
+                        <h6 class="vp-section-title">About Me</h6>
+                        <p class="mb-4" style="color: var(--text-dark); font-size: 1.05rem; line-height: 1.6;"><?= nl2br(h($profile['bio'])) ?></p>
+                    <?php endif; ?>
+
+                    <h6 class="vp-section-title">Lifestyle</h6>
+                    <div class="vp-vitals-grid">
+                        <?php if (!empty($profile['pets'])): ?>
+                            <div class="vp-vital-pill"><i class="bi bi-balloon-heart-fill"></i> Pets: <?= h($profile['pets']) ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($profile['workout'])): ?>
+                            <div class="vp-vital-pill"><i class="bi bi-activity"></i> Workout: <?= h($profile['workout']) ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($profile['social_media'])): ?>
+                            <div class="vp-vital-pill"><i class="bi bi-phone-vibrate-fill"></i> Socials: <?= h($profile['social_media']) ?></div>
+                        <?php endif; ?>
+                        
+                    </div>
+                </div>
             <?php endif; ?>
+
+            <?php if ($itemCount === 3 && !$loveShown && !empty($profile['love_language'])): $loveShown = true; ?>
+                <div class="vp-love-card">
+                    <div class="love-icon-wrapper"><i class="bi bi-chat-heart-fill"></i></div>
+                    <div class="love-info">
+                        <span class="love-label">My Love Language</span>
+                        <span class="love-value"><?= h($profile['love_language']) ?></span>
+                    </div>
+                </div>
             <?php endif; ?>
 
-        <?php endfor; ?>
+            <?php if ($itemCount === 4 && !$musicShown && !empty($profile['favourite_song'])): $musicShown = true; ?>
+                <div class="vp-music-card">
+                    <div class="music-icon-wrapper"><i class="bi bi-music-note-beamed"></i></div>
+                    <div class="music-info">
+                        <span class="music-label">My Anthem</span>
+                        <span class="music-track"><?= h($profile['favourite_song']) ?></span>
+                    </div>
+                </div>
+            <?php endif; ?>
 
-        <div style="height:1.5rem" aria-hidden="true"></div>
+            <?php if ($item['type'] === 'prompt'): ?>
+                <div class="vp-prompt-card shadow-sm mb-4" role="button" tabindex="0" aria-label="Reply to: <?= h($item['data']['q_text']) ?>" data-idx="<?= $item['idx'] ?>">
+                    <div class="vp-prompt-q"><?= h($item['data']['q_text']) ?></div>
+                    <div class="vp-prompt-a"><?= h($item['data']['ans_text']) ?></div>
+                </div>
+            <?php elseif ($item['type'] === 'image'): ?>
+                <div class="vp-photo-card shadow-sm mb-4">
+                    <img src="images/<?= h($item['data']) ?>" loading="lazy" alt="Profile Photo">
+                </div>
+            <?php endif; ?>
 
-        <!-- Report link — shown to logged-in users viewing someone else's profile -->
-        <?php if ($profileId !== (int)$_SESSION['user_id']): ?>
-            <div class="vp-report-row">
-                <a href="report.php?user_id=<?= h((string)$profile['id']) ?>"
-                class="vp-report-link"
-                aria-label="Report <?= h($profile['name']) ?>'s profile">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-                        <line x1="4" y1="22" x2="4" y2="15"/>
-                    </svg>
-                    Report this profile
-                </a>
+        <?php endforeach; ?>
+
+        <?php if (!$bioShown && (!empty($profile['bio']) || !empty($profile['pets']) || !empty($profile['workout']))): ?>
+            <div class="vp-info-card">
+                <?php if (!empty($profile['bio'])): ?>
+                    <h6 class="vp-section-title">About Me</h6>
+                    <p class="mb-4" style="color: var(--text-dark); font-size: 1.05rem; line-height: 1.6;"><?= nl2br(h($profile['bio'])) ?></p>
+                <?php endif; ?>
+                <div class="vp-vitals-grid">
+                    <?php if (!empty($profile['pets'])): ?><div class="vp-vital-pill"><i class="bi bi-balloon-heart-fill"></i> Pets: <?= h($profile['pets']) ?></div><?php endif; ?>
+                    <?php if (!empty($profile['workout'])): ?><div class="vp-vital-pill"><i class="bi bi-activity"></i> Workout: <?= h($profile['workout']) ?></div><?php endif; ?>
+                </div>
             </div>
         <?php endif; ?>
 
+        <?php if (!$musicShown && !empty($profile['favourite_song'])): ?>
+            <div class="vp-music-card">
+                <div class="music-icon-wrapper"><i class="bi bi-music-note-beamed"></i></div>
+                <div class="music-info">
+                    <span class="music-label">My Anthem</span>
+                    <span class="music-track"><?= h($profile['favourite_song']) ?></span>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!$loveShown && !empty($profile['love_language'])): ?>
+            <div class="vp-love-card">
+                <div class="love-icon-wrapper"><i class="bi bi-chat-heart-fill"></i></div>
+                <div class="love-info">
+                    <span class="love-label">My Love Language</span>
+                    <span class="love-value"><?= h($profile['love_language']) ?></span>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <div class="text-center mt-4">
+            <a href="report.php?user_id=<?= $profileId ?>" class="vp-report-link">
+                <i class="bi bi-flag-fill"></i> Report this profile
+            </a>
+        </div>
     </div>
-</div>
+
+    <?php if (!$fromChat): ?>
+        <div class="vp-actions vp-fixed-actions" style="background: transparent; border: none; box-shadow: none; backdrop-filter: none; gap: 2rem;">
+            
+            <button class="swipe-btn swipe-btn-no" id="btn-pass" aria-label="Pass">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 21.23 C12 21.23 3.28 14.5 3.28 8.5 A4.72 4.72 0 0 1 12 6.27"/>
+                    <path d="M12 21.23 C12 21.23 20.72 14.5 20.72 8.5 A4.72 4.72 0 0 0 12 6.27"/>
+                    <polyline points="10.5,6.5 12.5,10 10,11.5 13,16"/>
+                </svg>
+            </button>
+
+            <button class="swipe-btn" id="btn-super" aria-label="Super Like" style="width: 56px; height: 56px; box-shadow: 0 4px 24px rgba(59, 130, 246, 0.25);">
+                <svg viewBox="0 0 24 24" fill="#3b82f6" stroke="none" style="width: 24px; height: 24px;" aria-hidden="true">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+            </button>
+
+            <button class="swipe-btn swipe-btn-yes" id="btn-like" aria-label="Like">
+                <svg viewBox="0 0 24 24" fill="#22c55e" stroke="none" aria-hidden="true">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+            </button>
+
+        </div>
+    <?php endif; ?>
+
+</main>
 
 <script>
-document.querySelectorAll('.vp-prompt-card').forEach(card => {
-    const idx      = card.dataset.idx;
-    const box      = document.getElementById('reply-' + idx);
-    const textarea = box?.querySelector('.vp-reply-textarea');
-    const charEl   = document.getElementById('chars-' + idx);
-    const sendBtn  = box?.querySelector('.vp-send-btn');
+    document.addEventListener('DOMContentLoaded', () => {
+        const profileId = <?= $profileId ?>;
 
-    function toggle(e) {
-        if (box && box.contains(e.target)) return;
-        const opening = !card.classList.contains('is-open');
-        card.classList.toggle('is-open', opening);
-        box.hidden = !opening;
-        box.setAttribute('aria-hidden', String(!opening));
-        card.setAttribute('aria-expanded', String(opening));
-        if (opening) setTimeout(() => textarea?.focus(), 40);
-    }
-
-    card.addEventListener('click', toggle);
-    card.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(e); }
-    });
-
-    textarea?.addEventListener('input', () => {
-        const n = textarea.value.length;
-        if (charEl) {
-            charEl.textContent = n + ' / 500';
-            charEl.style.color = n > 450 ? '#ef4444' : '#ccc';
-        }
-    });
-
-    sendBtn?.addEventListener('click', e => {
-        e.stopPropagation();
-        const msg = textarea?.value.trim();
-        if (!msg) {
-            textarea?.focus();
-            textarea.style.borderColor = '#ef4444';
-            setTimeout(() => textarea.style.borderColor = '', 1200);
-            return;
-        }
-
-        console.log('Reply to:', sendBtn.dataset.promptQ, '| Message:', msg);
-
-        box.innerHTML = `
-            <div class="vp-sent-msg" role="status" aria-live="polite">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                Sent! We'll let <?= h($profile['name']) ?> know.
-            </div>`;
-        card.style.cursor = 'default';
-        card.classList.add('is-open');
-        card.removeEventListener('click', toggle);
-    });
-});
-
-function fadeOutAndRedirect(url) {
-    document.body.style.transition = 'opacity 0.35s ease';
-    document.body.style.opacity    = '0';
-    setTimeout(() => { window.location.href = url; }, 380);
-}
-
-document.querySelectorAll('.vp-btn-pass, .vp-btn-like').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const isLike    = btn.classList.contains('vp-btn-like');
-        const direction = isLike ? 'like' : 'pass';
-        const userId    = btn.dataset.userId;
-
-        let isMatch = false;
-        try {
-            const res  = await fetch('/api/swipe.php', {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ swiped_id: parseInt(userId), direction })
+        // Expand prompts on click
+        document.querySelectorAll('.vp-prompt-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const wasOpen = card.classList.contains('is-open');
+                document.querySelectorAll('.vp-prompt-card').forEach(c => {
+                    c.classList.remove('is-open');
+                    c.setAttribute('aria-expanded', 'false');
+                });
+                if (!wasOpen) {
+                    card.classList.add('is-open');
+                    card.setAttribute('aria-expanded', 'true');
+                }
             });
-            const data = await res.json();
-            isMatch = data.match === true;
-        } catch (e) {
-            console.error('Swipe error:', e);
-        }
+        });
 
-        if (isMatch) {
-            const name = document.querySelector('.vp-name')
-                ?.firstChild?.textContent?.trim()?.replace(',','') ?? 'them';
-            const overlay = document.createElement('div');
-            overlay.className = 'match-popup-overlay';
-            overlay.innerHTML = `
-                <div class="match-popup" role="alertdialog" aria-live="assertive">
-                    <span class="match-popup-emoji">💚</span>
-                    <p class="match-popup-heading">It's a Match!</p>
-                    <p class="match-popup-sub">You and ${name} liked each other</p>
-                    <p class="match-popup-hint">Check your matches tab</p>
-                    <div class="match-popup-bar">
-                        <div class="match-popup-bar-fill"></div>
-                    </div>
-                </div>`;
-            document.body.appendChild(overlay);
-            setTimeout(() => fadeOutAndRedirect('profiles.php?t=' + Date.now()), 2000);
+        // Helper for Like/Pass actions
+        const handleAction = (action) => {
+            const formData = new FormData();
+            formData.append('target_id', profileId);
+            formData.append('action', action);
 
-        } else {
-            const overlay = document.createElement('div');
-            overlay.setAttribute('aria-hidden', 'true');
-            overlay.style.cssText = `
-                position: fixed; inset: 0; z-index: 9999;
-                display: flex; align-items: center; justify-content: center;
-                font-size: 3.5rem; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif;
-                letter-spacing: 0.05em; border: 6px solid; border-radius: 16px;
-                margin: 2rem; pointer-events: none;
-                animation: overlayPop 0.25s ease forwards;
-                ${isLike
-                    ? 'color: #22c55e; border-color: #22c55e; background: rgba(34,197,94,0.08);'
-                    : 'color: #ef4444; border-color: #ef4444; background: rgba(239,68,68,0.08);'}
-            `;
-            overlay.textContent = isLike ? 'LIKE' : 'NOPE';
-            document.body.appendChild(overlay);
-            setTimeout(() => fadeOutAndRedirect('profiles.php?t=' + Date.now()), 400);
-        }
+            fetch('api/swipe.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    const isLike = (action === 'like' || action === 'superlike');
+
+                    if (data.status === 'match') {
+                        const overlay = document.createElement('div');
+                        overlay.style.cssText = `
+                        position: fixed; inset: 0; z-index: 9999;
+                        background: rgba(255, 74, 122, 0.95); color: white;
+                        display: flex; flex-direction: column; align-items: center; justify-content: center;
+                        animation: fadeIn 0.3s forwards;
+                    `;
+                        overlay.innerHTML = `
+                        <h1 style="font-weight: 800; font-size: 3.5rem; margin-bottom: 1rem;">It's a Match!</h1>
+                        <p style="font-size: 1.2rem; margin-bottom: 2rem;">You and <?= h($profile['name']) ?> liked each other.</p>
+                        <a href="chat.php?id=${profileId}" style="background: white; color: var(--primary-pink); padding: 1rem 3rem; border-radius: 50px; font-weight: 800; text-decoration: none; font-size: 1.1rem; margin-bottom: 1rem;">Send a Message</a>
+                        <a href="profiles.php" style="color: white; text-decoration: underline; font-weight: 600;">Keep Swiping</a>
+                    `;
+                        document.body.appendChild(overlay);
+                    } else {
+                        const overlay = document.createElement('div');
+                        overlay.style.cssText = `
+                        position: fixed; inset: 0; z-index: 9999;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 3.5rem; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif;
+                        letter-spacing: 0.05em; border: 6px solid; border-radius: 16px;
+                        margin: 2rem; pointer-events: none;
+                        animation: overlayPop 0.25s ease forwards;
+                        ${isLike ? 'color: #15803d; border-color: #15803d; background: rgba(21,128,61,0.08);' : 'color: #b91c1c; border-color: #b91c1c; background: rgba(185,28,28,0.08);'}
+                    `;
+                        overlay.textContent = isLike ? 'LIKE' : 'NOPE';
+                        document.body.appendChild(overlay);
+                        setTimeout(() => {
+                            window.location.href = 'profiles.php';
+                        }, 400);
+                    }
+                })
+                .catch(err => console.error(err));
+        };
+
+        const btnPass = document.getElementById('btn-pass');
+        const btnLike = document.getElementById('btn-like');
+        const btnSuper = document.getElementById('btn-super');
+
+        if (btnPass) btnPass.addEventListener('click', () => handleAction('pass'));
+        if (btnLike) btnLike.addEventListener('click', () => handleAction('like'));
+        if (btnSuper) btnSuper.addEventListener('click', () => handleAction('superlike'));
     });
-});
 
-const style = document.createElement('style');
-style.textContent = `
+    // Animations
+    const style = document.createElement('style');
+    style.textContent = `
     @keyframes overlayPop {
-        from { opacity: 0; transform: scale(0.8); }
-        to   { opacity: 1; transform: scale(1); }
+        0% { transform: scale(0.5); opacity: 0; }
+        50% { transform: scale(1.1); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 `;
-document.head.appendChild(style);
+    document.head.appendChild(style);
 </script>
 
 <?php require_once 'includes/footer.php'; ?>

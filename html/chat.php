@@ -38,11 +38,20 @@ $match = $stmt->fetch();
 if (!$match) {
     die("Unauthorized access");
 }
+
 $otherUserId = $match['other_user_id'];
 $otherUserName = $match['display_name'];
 $otherUserPic  = $match['main_image']
     ? '/images/' . $match['main_image']
     : 'https://ui-avatars.com/api/?name=' . urlencode($otherUserName);
+
+
+$banCheck = $pdo->prepare("SELECT id FROM bans WHERE user_id = ? LIMIT 1");
+$banCheck->execute([$otherUserId]);
+if ($banCheck->fetch()) {
+    header('Location: messages.php');
+    exit();
+}
 
 // Load messages
 $stmt = $pdo->prepare("
@@ -67,7 +76,7 @@ require_once 'includes/header.php';
     </div>
 
     <!-- Messages -->
-    <div class="chat-box" id="chat-box">
+    <div class="chat-box" id="chat-box" tabindex="0" aria-label="Chat messages"></div>
         <?php foreach ($messages as $msg): ?>
             <div class="message <?= $msg['sender_id'] == $currentUser ? 'sent' : 'received' ?>"
                  data-id="<?= (int) $msg['id'] ?>">

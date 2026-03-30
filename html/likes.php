@@ -38,11 +38,13 @@ try {
         FROM swipes s
         JOIN users u    ON u.id = s.swiped_id
         JOIN profile p  ON p.user_id = u.id
+        LEFT JOIN bans b ON b.user_id = u.id
         LEFT JOIN swipes s2 ON s2.swiper_id = s.swiped_id
                         AND s2.swiped_id = s.swiper_id
                         AND s2.direction = 'like'
         WHERE s.swiper_id = ?
         AND s.direction = 'like'
+        AND b.id IS NULL
         ORDER BY s.created_at DESC
     ");
     $stmt->execute([$currentUser]);
@@ -64,7 +66,7 @@ require_once 'includes/header.php';
                 <?= count($likes) ?> like<?= count($likes) !== 1 ? 's' : '' ?> sent
                 <?php $matchCount = count(array_filter($likes, fn($l) => $l['is_match'])); ?>
                 <?php if ($matchCount > 0): ?>
-                    &nbsp;·&nbsp; <?= $matchCount ?> mutual match<?= $matchCount !== 1 ? 'es' : '' ?> 💚
+                    &nbsp;·&nbsp; <?= $matchCount ?> mutual match<?= $matchCount !== 1 ? 'es' : '' ?> <i class="fa-solid fa-heart fa-bounce ms-1" style="color: var(--primary-pink);"></i>
                 <?php endif; ?>
             <?php else: ?>
                 Start swiping to see your likes here
@@ -105,7 +107,7 @@ require_once 'includes/header.php';
                          class="like-card-img"
                          loading="lazy">
                     <?php if ($like['is_match']): ?>
-                        <div class="like-card-badge like-card-badge--match" aria-label="Mutual match">💚</div>
+                        <div class="like-card-badge like-card-badge--match" aria-label="Mutual match">🩷</div>
                     <?php else: ?>
                         <div class="like-card-badge" aria-label="Liked">🤍</div>
                     <?php endif; ?>

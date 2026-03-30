@@ -7,7 +7,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 if (!function_exists('h')) {
-    function h(string $s): string {
+    function h(string $s): string
+    {
         return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
     }
 }
@@ -31,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $bio       = $_POST['biography'] ?? '';
     $education = $_POST['education'] ?? '';
     $loveLanguage = $_POST['love_language'] ?? '';
-    $interests = $_POST['interests'] ?? ''; 
+    $interests = $_POST['interests'] ?? '';
     $pets      = $_POST['pets'] ?? '';
     $workout   = $_POST['workout'] ?? '';
     $socialMedia = $_POST['social_media'] ?? '';
@@ -63,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $uploadDir = __DIR__ . '/images/';
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-        
+
         $imageCols = ['main_image', 'image_2', 'image_3', 'image_4', 'image_5', 'image_6'];
         $imageUpdates = [];
         $imageParams = [];
@@ -81,8 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                 }
-            } 
-            elseif (!empty($_POST['remove_' . $col]) && $_POST['remove_' . $col] === '1' && $col !== 'main_image') {
+            } elseif (!empty($_POST['remove_' . $col]) && $_POST['remove_' . $col] === '1' && $col !== 'main_image') {
                 $imageUpdates[] = "$col = NULL";
                 if (!empty($currentPhotos[$col])) {
                     $filesToDelete[] = $uploadDir . $currentPhotos[$col];
@@ -117,7 +117,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-            
+
+        // --- 6. Update Answers ---
+        $rawAnswers = $_POST['answers'] ?? [];
+        $validAnswers = [];
+        foreach ($rawAnswers as $qnId => $ansText) {
+            $trimmed = trim($ansText);
+            if ($trimmed !== '') {
+                $validAnswers[(int)$qnId] = $trimmed;
+            }
+        }
+        $validAnswers = array_slice($validAnswers, 0, 6, true);
+
+        $pdo->prepare("DELETE FROM Answers WHERE user_id = ?")->execute([$currentUser]);
+
+        if (!empty($validAnswers)) {
+            $stmtAns = $pdo->prepare("INSERT INTO Answers (qn_id, user_id, ans_text) VALUES (?, ?, ?)");
+            foreach ($validAnswers as $qnId => $ansText) {
+                $stmtAns->execute([$qnId, $currentUser, $ansText]);
+            }
+        }
+
         $pdo->commit();
         $successMessage = "Profile and photos updated successfully!";
 
@@ -135,6 +155,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ══════════════════════════════════════════════════════
 // DB Queries & Stats Calculation
 // ══════════════════════════════════════════════════════
+
+$questions = [];
+try {
+    $stmt = $pdo->query("SELECT qn_id, q_text FROM questions ORDER BY qn_id ASC");
+    $questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+}
+
+if (empty($questions)) {
+    // Fallback if DB questions missing
+    $fallbackQs = [
+        1 => 'My perfect Sunday looks like...',
+        2 => 'The way to my heart is...',
+        3 => "I'm weirdly passionate about...",
+        4 => 'A life goal of mine is...',
+        5 => 'My most controversial opinion is...',
+        6 => "The best trip I've ever taken was...",
+        7 => 'I get way too competitive about...',
+        8 => 'The most spontaneous thing I\'ve ever done is...',
+        9 => "I'll know we'll get along if...",
+        10 => "You'll know I like you if..."
+    ];
+    foreach ($fallbackQs as $id => $text) {
+        $questions[] = ['qn_id' => $id, 'q_text' => $text];
+    }
+}
+
+$userAnswers = [];
+try {
+    $stmt = $pdo->prepare("SELECT qn_id, ans_text FROM Answers WHERE user_id = ?");
+    $stmt->execute([$currentUser]);
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $userAnswers[$row['qn_id']] = $row['ans_text'];
+    }
+} catch (Exception $e) {
+}
+
 try {
     $stmt = $pdo->query("SELECT id, name FROM interests ORDER BY name");
     $allInterests = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -181,10 +238,10 @@ require_once 'includes/header.php';
 ?>
 
 <main class="container py-4" style="max-width:1200px; flex: 1;">
-    
+
     <div class="ep-header-banner text-center text-md-start d-flex flex-column flex-md-row justify-content-between align-items-center">
         <div>
-            <h1 class="fw-bold mb-1" style="color: var(--text-dark);">Edit Profile ✨</h1>
+            <h1 class="fw-bold mb-1" style="color: var(--text-dark);">Edit Profile <i class="fa-solid fa-star fa-beat" style="color: var(--primary-pink);"></i></h1>
             <p class="text-muted mb-0">Keep your vibe fresh and your details up to date.</p>
         </div>
         <?php if (!empty($successMessage)): ?>
@@ -208,27 +265,29 @@ require_once 'includes/header.php';
                         <p class="text-muted mb-4">Tap an empty slot to upload. The first image is your main profile picture.</p>
 
                         <div class="photo-upload-grid mb-2">
-                            <?php 
-                            $slots = ['main_image','image_2','image_3','image_4','image_5','image_6'];
-                            foreach ($slots as $col): 
+                            <?php
+                            $slots = ['main_image', 'image_2', 'image_3', 'image_4', 'image_5', 'image_6'];
+                            foreach ($slots as $col):
                                 $hasImg = !empty($profile[$col]);
-                                $bg = $hasImg ? "background-image: url('images/".h($profile[$col])."');" : "";
+                                $bg = $hasImg ? "background-image: url('images/" . h($profile[$col]) . "');" : "";
                                 $isMain = $col === 'main_image';
                             ?>
-                            <div class="photo-slot <?= $isMain ? 'main-slot' : '' ?>" id="slot_<?= $col ?>" style="<?= $bg ?>">
-                                <input type="file" name="<?= $col ?>" accept="image/*" class="d-none photo-input" id="input_<?= $col ?>">
-                                <input type="hidden" name="remove_<?= $col ?>" id="remove_<?= $col ?>" value="0">
-                                
-                                <div class="photo-placeholder" style="opacity: <?= $hasImg ? '0' : '1' ?>;">
-                                    <span style="font-size: 2rem;">+</span><?= $isMain ? '<br>Main Photo' : '' ?>
+                                <div class="photo-slot <?= $isMain ? 'main-slot' : '' ?>" id="slot_<?= $col ?>" style="<?= $bg ?>">
+                                    <input type="file" name="<?= $col ?>" accept="image/*" class="d-none photo-input" id="input_<?= $col ?>">
+                                    <input type="hidden" name="remove_<?= $col ?>" id="remove_<?= $col ?>" value="0">
+
+                                    <div class="photo-placeholder" style="opacity: <?= $hasImg ? '0' : '1' ?>;">
+                                        <span style="font-size: 2rem;">+</span><?= $isMain ? '<br>Main Photo' : '' ?>
+                                    </div>
+
+                                    <?php if (!$isMain): ?>
+                                        <button type="button" class="photo-remove-btn <?= $hasImg ? '' : 'd-none' ?>" aria-label="Remove photo" title="Remove photo" onclick="removePhoto('<?= $col ?>', event)">
+                                            <i class="bi bi-x-lg" aria-hidden="true"></i>
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <div class="photo-click-overlay position-absolute w-100 h-100" onclick="document.getElementById('input_<?= $col ?>').click()"></div>
                                 </div>
-
-                                <?php if (!$isMain): ?>
-                                    <button type="button" class="photo-remove-btn <?= $hasImg ? '' : 'd-none' ?>" onclick="removePhoto('<?= $col ?>', event)"><i class="bi bi-x-lg"></i></button>
-                                <?php endif; ?>
-
-                                <div class="photo-click-overlay position-absolute w-100 h-100" onclick="document.getElementById('input_<?= $col ?>').click()"></div>
-                            </div>
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -262,47 +321,47 @@ require_once 'includes/header.php';
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label text-muted fw-bold">First Name</label>
-                                <input type="text" class="form-control form-control-lg custom-input" name="first_name" value="<?= h($profile['first_name'] ?? '') ?>" required>
+                                <label class="form-label text-muted fw-bold" for="first_name">First Name</label>
+                                <input type="text" class="form-control form-control-lg custom-input" name="first_name" id="first_name" value="<?= h($profile['first_name'] ?? '') ?>" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label text-muted fw-bold">Last Name</label>
-                                <input type="text" class="form-control form-control-lg custom-input" name="last_name" value="<?= h($profile['last_name'] ?? '') ?>" required>
+                                <label class="form-label text-muted fw-bold" for="last_name">Last Name</label>
+                                <input type="text" class="form-control form-control-lg custom-input" name="last_name" id="last_name" value="<?= h($profile['last_name'] ?? '') ?>" required>
                             </div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-4">
-                                <label class="form-label text-muted fw-bold">Age</label>
-                                <input type="number" class="form-control form-control-lg custom-input" name="age" value="<?= h((string)($profile['age'] ?? '')) ?>" min="18">
+                                <label class="form-label text-muted fw-bold" for="age">Age</label>
+                                <input type="number" class="form-control form-control-lg custom-input" name="age" id="age" value="<?= h((string)($profile['age'] ?? '')) ?>" min="18">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label text-muted fw-bold">Gender</label>
-                                <select class="custom-select" name="gender">
-                                    <option <?= ($profile['gender'] ?? '')=='Male'?'selected':'' ?>>Male</option>
-                                    <option <?= ($profile['gender'] ?? '')=='Female'?'selected':'' ?>>Female</option>
-                                    <option <?= ($profile['gender'] ?? '')=='Non-Binary'?'selected':'' ?>>Non-Binary</option>
-                                    <option <?= ($profile['gender'] ?? '')=='Other'?'selected':'' ?>>Other</option>
+                                <label class="form-label text-muted fw-bold" for="gender">Gender</label>
+                                <select class="custom-select" name="gender" id="gender">
+                                    <option <?= ($profile['gender'] ?? '') == 'Male' ? 'selected' : '' ?>>Male</option>
+                                    <option <?= ($profile['gender'] ?? '') == 'Female' ? 'selected' : '' ?>>Female</option>
+                                    <option <?= ($profile['gender'] ?? '') == 'Non-Binary' ? 'selected' : '' ?>>Non-Binary</option>
+                                    <option <?= ($profile['gender'] ?? '') == 'Other' ? 'selected' : '' ?>>Other</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label text-muted fw-bold">Pronouns</label>
-                                <input type="text" class="form-control form-control-lg custom-input" name="pronouns" value="<?= h($profile['pronouns'] ?? '') ?>">
+                                <label class="form-label text-muted fw-bold" for="pronouns">Pronouns</label>
+                                <input type="text" class="form-control form-control-lg custom-input" name="pronouns" id="pronouns" value="<?= h($profile['pronouns'] ?? '') ?>">
                             </div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-5">
-                                <label class="form-label text-muted fw-bold">Location</label>
-                                <input type="text" class="form-control form-control-lg custom-input" name="location" value="<?= h($profile['location'] ?? '') ?>">
+                                <label class="form-label text-muted fw-bold" for="location">Location</label>
+                                <input type="text" class="form-control form-control-lg custom-input" name="location" id="location" value="<?= h($profile['location'] ?? '') ?>">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label text-muted fw-bold">Occupation</label>
-                                <input type="text" class="form-control form-control-lg custom-input" name="occupation" value="<?= h($profile['occupation'] ?? '') ?>">
+                                <label class="form-label text-muted fw-bold" for="occupation">Occupation</label>
+                                <input type="text" class="form-control form-control-lg custom-input" name="occupation" id="occupation" value="<?= h($profile['occupation'] ?? '') ?>">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label text-muted fw-bold">Height (cm)</label>
-                                <input type="number" class="form-control form-control-lg custom-input" name="height" value="<?= h((string)($profile['height'] ?? '')) ?>">
+                                <label class="form-label text-muted fw-bold" for="height">Height (cm)</label>
+                                <input type="number" class="form-control form-control-lg custom-input" name="height" id="height" value="<?= h((string)($profile['height'] ?? '')) ?>">
                             </div>
                         </div>
                     </div>
@@ -315,27 +374,27 @@ require_once 'includes/header.php';
                         </h4>
 
                         <div class="mb-4">
-                            <label class="form-label text-muted fw-bold">Biography</label>
-                            <textarea class="form-control custom-input" name="biography" rows="4" style="background-color: #FFFFFF !important;"><?= h($profile['biography'] ?? '') ?></textarea>
+                            <label class="form-label text-muted fw-bold" for="biography">Biography</label>
+                            <textarea class="form-control custom-input" name="biography" id="biography" rows="4" style="background-color: #FFFFFF !important;"><?= h($profile['biography'] ?? '') ?></textarea>
                         </div>
 
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
                                 <label class="form-label text-muted fw-bold">Education</label>
                                 <select class="custom-select" name="education">
-                                    <option <?= ($profile['education'] ?? '')=='Undergraduate'?'selected':'' ?>>Undergraduate</option>
-                                    <option <?= ($profile['education'] ?? '')=='Postgraduate'?'selected':'' ?>>Postgraduate</option>
-                                    <option <?= ($profile['education'] ?? '')=='Alumni'?'selected':'' ?>>Alumni</option>
+                                    <option <?= ($profile['education'] ?? '') == 'Undergraduate' ? 'selected' : '' ?>>Undergraduate</option>
+                                    <option <?= ($profile['education'] ?? '') == 'Postgraduate' ? 'selected' : '' ?>>Postgraduate</option>
+                                    <option <?= ($profile['education'] ?? '') == 'Alumni' ? 'selected' : '' ?>>Alumni</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-muted fw-bold">Love Language</label>
                                 <select class="custom-select" name="love_language">
-                                    <option <?= ($profile['love_language'] ?? '')=='Words of Affirmation'?'selected':'' ?>>Words of Affirmation</option>
-                                    <option <?= ($profile['love_language'] ?? '')=='Acts of Service'?'selected':'' ?>>Acts of Service</option>
-                                    <option <?= ($profile['love_language'] ?? '')=='Receiving Gifts'?'selected':'' ?>>Receiving Gifts</option>
-                                    <option <?= ($profile['love_language'] ?? '')=='Quality Time'?'selected':'' ?>>Quality Time</option>
-                                    <option <?= ($profile['love_language'] ?? '')=='Physical Touch'?'selected':'' ?>>Physical Touch</option>
+                                    <option <?= ($profile['love_language'] ?? '') == 'Words of Affirmation' ? 'selected' : '' ?>>Words of Affirmation</option>
+                                    <option <?= ($profile['love_language'] ?? '') == 'Acts of Service' ? 'selected' : '' ?>>Acts of Service</option>
+                                    <option <?= ($profile['love_language'] ?? '') == 'Receiving Gifts' ? 'selected' : '' ?>>Receiving Gifts</option>
+                                    <option <?= ($profile['love_language'] ?? '') == 'Quality Time' ? 'selected' : '' ?>>Quality Time</option>
+                                    <option <?= ($profile['love_language'] ?? '') == 'Physical Touch' ? 'selected' : '' ?>>Physical Touch</option>
                                 </select>
                             </div>
                         </div>
@@ -344,15 +403,18 @@ require_once 'includes/header.php';
                             <label class="form-label text-muted fw-bold mb-3">Your Interests (Max 5)</label>
                             <div id="selected-interests" class="mb-3 d-flex flex-wrap">
                                 <?php
-                                    $tags = explode(',', $profile['interests'] ?? '');
-                                    foreach ($tags as $tag):
-                                        $trimmed = trim($tag);
-                                        if (!$trimmed) continue;
-                                        $interestId = '';
-                                        foreach ($allInterests as $int) {
-                                            if ($int['name'] === $trimmed) { $interestId = $int['id']; break; }
+                                $tags = explode(',', $profile['interests'] ?? '');
+                                foreach ($tags as $tag):
+                                    $trimmed = trim($tag);
+                                    if (!$trimmed) continue;
+                                    $interestId = '';
+                                    foreach ($allInterests as $int) {
+                                        if ($int['name'] === $trimmed) {
+                                            $interestId = $int['id'];
+                                            break;
                                         }
-                                    ?>
+                                    }
+                                ?>
                                     <span class="tag-span" data-id="<?= h((string)$interestId) ?>">
                                         <?= h($trimmed) ?> <i class="bi bi-x-circle-fill remove-tag ms-1"></i>
                                     </span>
@@ -365,10 +427,46 @@ require_once 'includes/header.php';
                                     <option value="<?= $interest['id'] ?>"><?= h($interest['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
-                            
+
                             <div class="invalid-feedback fw-bold mt-2" id="interest-error">
                                 <i class="bi bi-exclamation-circle-fill"></i> Maximum of 5 interests allowed.
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px;">
+                    <div class="card-body p-4 p-md-5">
+                        <h4 class="fw-bold mb-1 d-flex align-items-center gap-2" style="color: var(--primary-pink);">
+                            <i class="bi bi-chat-quote-fill fs-3"></i> Conversation Starters
+                        </h4>
+                        <p class="text-muted mb-4">Answer up to 6 questions. These show up on your profile as conversation starters.</p>
+
+                        <div id="qa-answer-count-msg" class="mb-3" style="font-size: 0.85rem; font-weight: 700; color: #595959;">
+                            0 / 6 answered
+                        </div>
+
+                        <div class="qa-list d-flex flex-column gap-3 mb-2">
+                            <?php foreach ($questions as $q):
+                                $qId = $q['qn_id'];
+                                $qText = h($q['q_text']);
+                                $ansText = isset($userAnswers[$qId]) ? h($userAnswers[$qId]) : '';
+                                $hasAns = !empty($ansText);
+                            ?>
+                                <div class="qa-card <?= $hasAns ? 'qa-card--answered' : '' ?>" id="qa-card-<?= $qId ?>">
+                                    <label class="qa-question" for="ans_<?= $qId ?>">
+                                        💬 <?= $qText ?>
+                                    </label>
+                                    <textarea
+                                        class="qa-textarea"
+                                        id="ans_<?= $qId ?>"
+                                        name="answers[<?= $qId ?>]"
+                                        rows="2"
+                                        maxlength="300"
+                                        placeholder="Your answer..."><?= $ansText ?></textarea>
+                                    <div class="qa-char-count" id="char-<?= $qId ?>"><?= mb_strlen($ansText) ?> / 300</div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
                     </div>
                 </div>
@@ -383,34 +481,34 @@ require_once 'includes/header.php';
                             <div class="col-md-4">
                                 <label class="form-label text-muted fw-bold">Pets</label>
                                 <select class="custom-select" name="pets">
-                                    <option <?= ($profile['pets'] ?? '')=='None'?'selected':'' ?>>None</option>
-                                    <option <?= ($profile['pets'] ?? '')=='Dog'?'selected':'' ?>>Dog</option>
-                                    <option <?= ($profile['pets'] ?? '')=='Cat'?'selected':'' ?>>Cat</option>
-                                    <option <?= ($profile['pets'] ?? '')=='Other'?'selected':'' ?>>Other</option>
+                                    <option <?= ($profile['pets'] ?? '') == 'None' ? 'selected' : '' ?>>None</option>
+                                    <option <?= ($profile['pets'] ?? '') == 'Dog' ? 'selected' : '' ?>>Dog</option>
+                                    <option <?= ($profile['pets'] ?? '') == 'Cat' ? 'selected' : '' ?>>Cat</option>
+                                    <option <?= ($profile['pets'] ?? '') == 'Other' ? 'selected' : '' ?>>Other</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label text-muted fw-bold">Workout</label>
                                 <select class="custom-select" name="workout">
-                                    <option <?= ($profile['workout'] ?? '')=='Never'?'selected':'' ?>>Never</option>
-                                    <option <?= ($profile['workout'] ?? '')=='Sometimes'?'selected':'' ?>>Sometimes</option>
-                                    <option <?= ($profile['workout'] ?? '')=='Active'?'selected':'' ?>>Active</option>
-                                    <option <?= ($profile['workout'] ?? '')=='Very Active'?'selected':'' ?>>Very Active</option>
+                                    <option <?= ($profile['workout'] ?? '') == 'Never' ? 'selected' : '' ?>>Never</option>
+                                    <option <?= ($profile['workout'] ?? '') == 'Sometimes' ? 'selected' : '' ?>>Sometimes</option>
+                                    <option <?= ($profile['workout'] ?? '') == 'Active' ? 'selected' : '' ?>>Active</option>
+                                    <option <?= ($profile['workout'] ?? '') == 'Very Active' ? 'selected' : '' ?>>Very Active</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label text-muted fw-bold">Social Media</label>
                                 <select class="custom-select" name="social_media">
-                                    <option <?= ($profile['social_media'] ?? '')=='Never'?'selected':'' ?>>Never</option>
-                                    <option <?= ($profile['social_media'] ?? '')=='Sometimes'?'selected':'' ?>>Sometimes</option>
-                                    <option <?= ($profile['social_media'] ?? '')=='Very Active'?'selected':'' ?>>Very Active</option>
+                                    <option <?= ($profile['social_media'] ?? '') == 'Never' ? 'selected' : '' ?>>Never</option>
+                                    <option <?= ($profile['social_media'] ?? '') == 'Sometimes' ? 'selected' : '' ?>>Sometimes</option>
+                                    <option <?= ($profile['social_media'] ?? '') == 'Very Active' ? 'selected' : '' ?>>Very Active</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label text-muted fw-bold">Favourite Song / Artist</label>
-                            <input type="text" class="form-control form-control-lg custom-input" name="favourite_song" value="<?= h($profile['favourite_song'] ?? '') ?>">
+                            <label class="form-label text-muted fw-bold" for="favourite_song">Favourite Song / Artist</label>
+                            <input type="text" class="form-control form-control-lg custom-input" name="favourite_song" id="favourite_song" value="<?= h($profile['favourite_song'] ?? '') ?>">
                         </div>
 
                         <hr class="my-4" style="border-color: rgba(0,0,0,0.1);">
@@ -419,36 +517,36 @@ require_once 'includes/header.php';
                             <div class="col-md-6">
                                 <label class="form-label text-muted fw-bold">Looking For</label>
                                 <select class="custom-select" name="looking_for">
-                                    <option <?= ($profile['looking_for'] ?? '')=='Something Casual'?'selected':'' ?>>Something Casual</option>
-                                    <option <?= ($profile['looking_for'] ?? '')=='A Relationship'?'selected':'' ?>>A Relationship</option>
-                                    <option <?= ($profile['looking_for'] ?? '')=='New Friends'?'selected':'' ?>>New Friends</option>
-                                    <option <?= ($profile['looking_for'] ?? '')=='Not Sure Yet'?'selected':'' ?>>Not Sure Yet</option>
+                                    <option <?= ($profile['looking_for'] ?? '') == 'Something Casual' ? 'selected' : '' ?>>Something Casual</option>
+                                    <option <?= ($profile['looking_for'] ?? '') == 'A Relationship' ? 'selected' : '' ?>>A Relationship</option>
+                                    <option <?= ($profile['looking_for'] ?? '') == 'New Friends' ? 'selected' : '' ?>>New Friends</option>
+                                    <option <?= ($profile['looking_for'] ?? '') == 'Not Sure Yet' ? 'selected' : '' ?>>Not Sure Yet</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-muted fw-bold">Show Me</label>
                                 <select class="custom-select" name="show_me">
-                                    <option <?= ($profile['show_me'] ?? '')=='Male'?'selected':'' ?>>Male</option>
-                                    <option <?= ($profile['show_me'] ?? '')=='Female'?'selected':'' ?>>Female</option>
-                                    <option <?= ($profile['show_me'] ?? '')=='Everyone'?'selected':'' ?>>Everyone</option>
+                                    <option <?= ($profile['show_me'] ?? '') == 'Male' ? 'selected' : '' ?>>Male</option>
+                                    <option <?= ($profile['show_me'] ?? '') == 'Female' ? 'selected' : '' ?>>Female</option>
+                                    <option <?= ($profile['show_me'] ?? '') == 'Everyone' ? 'selected' : '' ?>>Everyone</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="row g-3 mb-2">
                             <div class="col-6">
-                                <label class="form-label text-muted fw-bold">Min Age</label>
-                                <input type="number" class="form-control form-control-lg custom-input" name="age_min" value="<?= h((string)($profile['age_min'] ?? '18')) ?>" min="18">
+                                <label class="form-label text-muted fw-bold" for="age_min">Min Age</label>
+                                <input type="number" class="form-control form-control-lg custom-input" name="age_min" id="age_min" value="<?= h((string)($profile['age_min'] ?? '18')) ?>" min="18">
                             </div>
                             <div class="col-6">
-                                <label class="form-label text-muted fw-bold">Max Age</label>
-                                <input type="number" class="form-control form-control-lg custom-input" name="age_max" value="<?= h((string)($profile['age_max'] ?? '99')) ?>" max="99">
+                                <label class="form-label text-muted fw-bold" for="age_max">Max Age</label>
+                                <input type="number" class="form-control form-control-lg custom-input" name="age_max" id="age_max" value="<?= h((string)($profile['age_max'] ?? '99')) ?>" max="99">
                             </div>
                         </div>
 
                     </div>
                 </div>
-                
+
                 <button type="submit" class="btn-solid-custom w-100 py-3 mb-5 fs-5 shadow-sm d-flex align-items-center justify-content-center gap-2">
                     <i class="bi bi-floppy-fill"></i> Save All Changes
                 </button>
@@ -458,12 +556,12 @@ require_once 'includes/header.php';
 
         <div class="col-lg-5 d-none d-lg-flex justify-content-center align-items-start">
             <div class="card-stack mt-lg-2" style="width: 100%; max-width: 440px; height: 660px; position: sticky; top: 100px;">
-                
+
                 <div class="profile-card card-back-2"></div>
                 <div class="profile-card card-back-1"></div>
-                
+
                 <div class="profile-card card-front p-0 border-0 overflow-hidden preview-clickable" id="live-preview-card">
-                    
+
                     <div id="gallery-indicators" class="gallery-indicators"></div>
 
                     <div class="card-image" id="preview-bg"></div>
@@ -471,20 +569,20 @@ require_once 'includes/header.php';
 
                     <div class="card-body-content w-100 h-100 d-flex flex-column justify-content-end position-relative" style="z-index: 3; padding: 2rem;">
                         <span class="badge bg-light text-dark position-absolute top-0 end-0 m-3 fw-bold shadow-sm" style="font-size: 0.8rem; z-index: 20;"><i class="bi bi-eye"></i> Live Preview</span>
-                        
+
                         <h3 class="card-name mb-1" style="color: white; font-size: 2.2rem; font-weight: 800; line-height: 1.1;">
                             <?= h($profile['first_name'] ?? 'Your Name') ?>, <span id="liveAge"><?= h((string)($profile['age'] ?? 'Age')) ?></span>
                         </h3>
-                        
+
                         <p class="card-meta mb-3" style="color: rgba(255,255,255,0.9); font-size: 0.95rem;">
                             <i class="bi bi-geo-alt-fill text-white"></i> <?= h($profile['location'] ?? 'Location') ?> &bull; <?= h($profile['occupation'] ?? 'Occupation') ?>
                         </p>
-                        
+
                         <div class="card-tags mb-3">
-                            <?php 
+                            <?php
                             if (!empty($profile['interests'])) {
                                 $tags = explode(',', $profile['interests']);
-                                foreach (array_slice($tags, 0, 3) as $tag) { 
+                                foreach (array_slice($tags, 0, 3) as $tag) {
                                     $trimmed = trim($tag);
                                     if ($trimmed) echo "<span class=\"card-tag\">" . h($trimmed) . "</span>";
                                 }
@@ -494,7 +592,7 @@ require_once 'includes/header.php';
                             }
                             ?>
                         </div>
-                        
+
                         <p class="card-bio mb-0" style="color: rgba(255,255,255,0.85); font-size: 0.95rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                             <?= h($profile['biography'] ?? 'Your bio will appear here...') ?>
                         </p>
@@ -515,17 +613,17 @@ require_once 'includes/header.php';
         if (select.closest('[style*="background-color: #FFF0F5"]')) {
             wrapper.style.backgroundColor = '#FFFFFF';
         }
-        
+
         const display = document.createElement('div');
         display.className = 'custom-dropdown-display';
         display.innerText = select.options[select.selectedIndex]?.text || 'Select...';
-        if (select.value === '') display.style.color = '#999';
+        if (select.value === '') display.style.color = '#595959';
 
         const list = document.createElement('div');
         list.className = 'custom-dropdown-list shadow-lg rounded-3';
 
         Array.from(select.options).forEach((opt, idx) => {
-            if(idx === 0 && opt.disabled) return;
+            if (idx === 0 && opt.disabled) return;
             const item = document.createElement('div');
             item.className = 'custom-dropdown-item';
             item.innerText = opt.text;
@@ -534,8 +632,8 @@ require_once 'includes/header.php';
                 display.innerText = opt.text;
                 display.style.color = 'var(--text-dark)';
                 list.classList.remove('show');
-                
-                if(select.id === 'interest-select') {
+
+                if (select.id === 'interest-select') {
                     select.dispatchEvent(new Event('change'));
                     display.innerText = '+ Add an interest...';
                 }
@@ -544,7 +642,9 @@ require_once 'includes/header.php';
         });
 
         display.addEventListener('click', (e) => {
-            document.querySelectorAll('.custom-dropdown-list').forEach(l => { if(l !== list) l.classList.remove('show') });
+            document.querySelectorAll('.custom-dropdown-list').forEach(l => {
+                if (l !== list) l.classList.remove('show')
+            });
             list.classList.toggle('show');
             e.stopPropagation();
         });
@@ -604,7 +704,7 @@ require_once 'includes/header.php';
         previewBg.style.display = 'block';
         previewBg.style.backgroundImage = images[currentPreviewIndex];
         cardFront.style.background = 'transparent';
-        
+
         if (images.length > 1) {
             const nextIdx = (currentPreviewIndex + 1) % images.length;
             cardBack1.style.backgroundImage = images[nextIdx];
@@ -637,11 +737,11 @@ require_once 'includes/header.php';
 
     document.getElementById('live-preview-card').addEventListener('click', (e) => {
         const images = getGalleryImages();
-        if (images.length <= 1) return; 
+        if (images.length <= 1) return;
 
         const rect = e.currentTarget.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
-        
+
         if (clickX < rect.width / 2) {
             currentPreviewIndex = (currentPreviewIndex - 1 + images.length) % images.length;
         } else {
@@ -654,7 +754,7 @@ require_once 'includes/header.php';
     function removePhoto(col, event) {
         event.stopPropagation();
         document.getElementById('remove_' + col).value = '1';
-        
+
         const slot = document.getElementById('slot_' + col);
         slot.style.backgroundImage = '';
         slot.querySelector('.photo-placeholder').style.opacity = '1';
@@ -669,14 +769,14 @@ require_once 'includes/header.php';
             const file = this.files[0];
             const col = this.name;
             const slot = document.getElementById('slot_' + col);
-            
+
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     slot.style.backgroundImage = `url(${e.target.result})`;
                     slot.querySelector('.photo-placeholder').style.opacity = '0';
                     document.getElementById('remove_' + col).value = '0';
-                    
+
                     const rmBtn = slot.querySelector('.photo-remove-btn');
                     if (rmBtn) rmBtn.classList.remove('d-none');
 
@@ -695,26 +795,26 @@ require_once 'includes/header.php';
     const hiddenInput = document.getElementById('interests-hidden');
     const MAX_INTERESTS = 5;
 
-    function updateHiddenInterests(){
+    function updateHiddenInterests() {
         const ids = Array.from(selectedContainer.querySelectorAll('.tag-span')).map(tag => tag.dataset.id).filter(Boolean);
         hiddenInput.value = ids.join(',');
     }
 
     interestSelect.addEventListener('change', () => {
         const currentCount = selectedContainer.querySelectorAll('.tag-span').length;
-        const wrapper = interestSelect.nextElementSibling; 
-        
+        const wrapper = interestSelect.nextElementSibling;
+
         if (currentCount >= MAX_INTERESTS) {
             if (wrapper && wrapper.classList.contains('custom-dropdown-wrapper')) {
                 wrapper.classList.add('is-invalid');
             }
-            
+
             interestSelect.value = "";
-            
+
             setTimeout(() => {
                 if (wrapper) wrapper.classList.remove('is-invalid');
             }, 3000);
-            
+
             return;
         }
 
@@ -726,13 +826,16 @@ require_once 'includes/header.php';
         if (!interestId) return;
 
         const exists = Array.from(selectedContainer.querySelectorAll('.tag-span')).some(tag => tag.dataset.id === interestId);
-        if (exists) { interestSelect.value = ""; return; }
+        if (exists) {
+            interestSelect.value = "";
+            return;
+        }
 
         const span = document.createElement('span');
         span.className = 'tag-span';
         span.dataset.id = interestId;
         span.innerHTML = `${interestName} <i class="bi bi-x-circle-fill remove-tag ms-1"></i>`;
-        
+
         selectedContainer.appendChild(span);
         interestSelect.value = "";
         updateHiddenInterests();
@@ -742,7 +845,7 @@ require_once 'includes/header.php';
         if (e.target.classList.contains('remove-tag')) {
             e.target.parentElement.remove();
             updateHiddenInterests();
-            
+
             const wrapper = interestSelect.nextElementSibling;
             if (wrapper) wrapper.classList.remove('is-invalid');
         }
@@ -760,7 +863,7 @@ require_once 'includes/header.php';
 
         const nameEl = document.querySelector('.card-name');
         if (nameEl) nameEl.innerHTML = `${fName}, <span id="liveAge">${age}</span>`;
-        
+
         const metaEl = document.querySelector('.card-meta');
         if (metaEl) metaEl.innerHTML = `<i class="bi bi-geo-alt-fill text-white"></i> ${loc} &bull; ${occ}`;
 
@@ -772,6 +875,58 @@ require_once 'includes/header.php';
         el.addEventListener('input', updatePreviewText);
     });
 
+    // --- Q&A Logic ---
+    const countMsg = document.getElementById('qa-answer-count-msg');
+    const qaForm = document.getElementById('editProfileForm');
+
+    function updateQaCount() {
+        const filled = document.querySelectorAll('.qa-textarea');
+        let count = 0;
+        filled.forEach(ta => {
+            if (ta.value.trim().length > 0) count++;
+        });
+        if (countMsg) {
+            countMsg.textContent = count + ' / 6 answered';
+            countMsg.style.color = count >= 3 ? '#15803d' : (count > 0 ? '#b45309' : '#595959');
+        }
+    }
+
+    document.querySelectorAll('.qa-textarea').forEach(ta => {
+        const qid = ta.id.replace('ans_', '');
+        const charEl = document.getElementById('char-' + qid);
+        const card = ta.closest('.qa-card');
+
+        ta.addEventListener('input', () => {
+            const n = ta.value.length;
+            if (charEl) {
+                charEl.textContent = n + ' / 300';
+                charEl.style.color = n > 260 ? '#b91c1c' : '#595959';
+            }
+            if (card) {
+                if (ta.value.trim().length > 0) {
+                    card.classList.add('qa-card--answered');
+                } else {
+                    card.classList.remove('qa-card--answered');
+                }
+            }
+            updateQaCount();
+        });
+    });
+
+    if (qaForm) {
+        qaForm.addEventListener('submit', function(e) {
+            const textareas = document.querySelectorAll('.qa-textarea');
+            let count = 0;
+            textareas.forEach(ta => {
+                if (ta.value.trim().length > 0) {
+                    count++;
+                    if (count > 6) ta.value = ''; // blank extras
+                }
+            });
+        });
+    }
+
+    updateQaCount();
 </script>
 
 <?php require_once 'includes/footer.php'; ?>

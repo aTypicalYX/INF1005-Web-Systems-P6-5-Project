@@ -8,6 +8,11 @@
 // Example:
 //   <?php $activePage = 'discover'; require_once 'includes/header.inc.php'; 
 
+// Generate a secure CSRF token if one doesn't exist for the session
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 if (!isset($activePage)) $activePage = '';
 
 // Helper — echo HTML-escaped string
@@ -18,6 +23,21 @@ if (!function_exists('h')) {
 }
 
 $loggedIn = isset($_SESSION['user_id']);
+
+// Check if logged in user is inside the banned table
+if ($loggedIn && isset($pdo)) {
+    try {
+        $stmt = $pdo->prepare("SELECT id FROM bans WHERE user_id = ? LIMIT 1");
+        $stmt->execute([(int)$_SESSION["user_id"]]);
+        if ($stmt->fetch()) {
+            $_SESSION['is_banned'] = true;
+            header("Location: banned.php");
+            exit();
+        }
+    } catch (Exception $e) {
+        // Fail open
+    }
+}
 
 // Helper — returns 'active' + aria-current if page matches
 function navClass(string $page, string $active): string {
@@ -43,7 +63,7 @@ function navClass(string $page, string $active): string {
 <body>
 
 <div class="navbar-wrapper">
-    <div class="container" aria-label="Main navigation">
+    <div class="container">
         
         <nav class="custom-navbar navbar navbar-expand-lg">
 
@@ -106,10 +126,25 @@ function navClass(string $page, string $active): string {
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
+
+                                
+                                <?php if ($_SESSION['role'] == "admin"): ?>
                                 <li>
-                                    <a class="dropdown-item text-danger" href="logout.php">
-                                        <span aria-hidden="true"><i class="fa-solid fa-arrow-right" style="color: var(--primary-pink);"></i></span> Logout
+                                    <a class="dropdown-item" href="reports.php">
+                                        <span aria-hidden="true"><i class="fa-solid fa-lock" style="color: var(--primary-pink);"></i></span> View Reports
                                     </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                
+                                <?php endif; ?>
+                                <li>
+                                    <form method="POST" action="logout.php" style="display:inline;">
+                                        <input type="hidden" name="csrf_token"
+                                            value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                                        <button type="submit" class="dropdown-item text-danger border-0 bg-transparent w-100 text-start">
+                                            <span aria-hidden="true"><i class="fa-solid fa-arrow-right" style="color: var(--primary-pink);"></i></span> Logout
+                                        </button>
+                                    </form>
                                 </li>
                             </ul>
                         </div>

@@ -1,6 +1,13 @@
 <?php
 session_start();
 
+if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
+    $_SESSION['error'] = 'Invalid request. Please try again.';
+    header('Location: signup.php');
+    exit;
+}
+$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
 $errorMsg = '';
 $success = true;
 
@@ -52,7 +59,7 @@ try {
         'Biography'     => trim($_POST['biography'] ?? ''),
         'Location'      => trim($_POST['location'] ?? ''),
         'Occupation'    => trim($_POST['occupation'] ?? ''),
-        'Favourite song'=> trim($_POST['favourite_song'] ?? ''),
+        'Favourite song' => trim($_POST['favourite_song'] ?? ''),
     ];
 
     foreach ($fieldsToCheck as $fieldName => $value) {
@@ -68,6 +75,21 @@ try {
         throw new Exception("An account with that username or email already exists.");
     }
 
+    // Validate Q&A — must have at least 3 non-empty answers
+    $rawAnswers = $_POST['answers'] ?? [];
+    $validAnswers = [];
+    foreach ($rawAnswers as $qnId => $ansText) {
+        $trimmed = trim($ansText);
+        if ($trimmed !== '') {
+            $validAnswers[(int)$qnId] = $trimmed;
+        }
+    }
+    if (count($validAnswers) < 3) {
+        throw new Exception("Please answer at least 3 questions before completing registration.");
+    }
+    // Cap at 6
+    $validAnswers = array_slice($validAnswers, 0, 6, true);
+
     // Start Transaction
     $pdo->beginTransaction();
 
@@ -80,18 +102,22 @@ try {
     // 4. Handle Specific Photo Upload Slots
     $uploadDir = __DIR__ . '/images/';
     if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-    
-    $finalImages = array_fill(0, 6, null); 
+
+    $finalImages = array_fill(0, 6, null);
     $inputNames = ['main_image', 'image_2', 'image_3', 'image_4', 'image_5', 'image_6'];
-    
+
     $uploadedFiles = []; // IMPROVEMENT: Track files to delete if transaction fails
     $finfo = new finfo(FILEINFO_MIME_TYPE); // IMPROVEMENT: Initialize MIME checker
 
     foreach ($inputNames as $index => $inputName) {
         if (isset($_FILES[$inputName]) && $_FILES[$inputName]['error'] === UPLOAD_ERR_OK) {
             $tmpName = $_FILES[$inputName]['tmp_name'];
+            // 5MB Limit (5 * 1024 * 1024 bytes)
+            if ($_FILES[$inputName]['size'] > 5242880) {
+                throw new Exception("Image " . ($index + 1) . " is too large. Maximum size is 5MB.");
+            }
             $ext = strtolower(pathinfo($_FILES[$inputName]['name'], PATHINFO_EXTENSION));
-            
+
             // Strictly check the actual file contents, not just the name
             $mime = $finfo->file($tmpName);
             $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
@@ -121,30 +147,35 @@ try {
             main_image, image_2, image_3, image_4, image_5, image_6, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     ');
-    
+
     $stmtProf->execute([
-        $userId, 
-        trim($_POST['display_name'] ?? ''), 
-        (int)($_POST['age'] ?? 0), 
-        trim($_POST['gender'] ?? ''), 
-        trim($_POST['pronouns'] ?? ''), 
-        trim($_POST['location'] ?? ''), 
-        trim($_POST['occupation'] ?? ''), 
-        trim($_POST['education'] ?? ''), 
-        trim($_POST['love_language'] ?? ''), 
+        $userId,
+        trim($_POST['display_name'] ?? ''),
+        (int)($_POST['age'] ?? 0),
+        trim($_POST['gender'] ?? ''),
+        trim($_POST['pronouns'] ?? ''),
+        trim($_POST['location'] ?? ''),
+        trim($_POST['occupation'] ?? ''),
+        trim($_POST['education'] ?? ''),
+        trim($_POST['love_language'] ?? ''),
         (int)($_POST['height'] ?? 0),
-        trim($_POST['biography'] ?? ''), 
+        trim($_POST['biography'] ?? ''),
         trim($_POST['pets'] ?? 'None'),
         trim($_POST['workout'] ?? 'Sometimes'),
         trim($_POST['social_media'] ?? 'Sometimes'),
-        trim($_POST['favourite_song'] ?? ''), 
-        $finalImages[0], $finalImages[1], $finalImages[2], $finalImages[3], $finalImages[4], $finalImages[5]
+        trim($_POST['favourite_song'] ?? ''),
+        $finalImages[0],
+        $finalImages[1],
+        $finalImages[2],
+        $finalImages[3],
+        $finalImages[4],
+        $finalImages[5]
     ]);
 
     // 6. Insert into `preferences` table
     $ageMin = (int)($_POST['age_min'] ?? 18);
     $ageMax = (int)($_POST['age_max'] ?? 99);
-    
+
     if ($ageMin < 18) $ageMin = 18;
     if ($ageMax > 99) $ageMax = 99;
     if ($ageMin > $ageMax) {
@@ -155,10 +186,10 @@ try {
 
     $stmtPref = $pdo->prepare('INSERT INTO preferences (user_id, looking_for, show_me, age_min, age_max) VALUES (?, ?, ?, ?, ?)');
     $stmtPref->execute([
-        $userId, 
-        trim($_POST['looking_for'] ?? 'A Relationship'), 
+        $userId,
+        trim($_POST['looking_for'] ?? 'A Relationship'),
         trim($_POST['show_me'] ?? 'Everyone'),
-        $ageMin, 
+        $ageMin,
         $ageMax
     ]);
 
@@ -170,23 +201,31 @@ try {
         }
     }
 
+    // 8. Insert Q&A answers
+    $stmtAns = $pdo->prepare('INSERT INTO Answers (qn_id, user_id, ans_text) VALUES (?, ?, ?)');
+    foreach ($validAnswers as $qnId => $ansText) {
+        if (containsProfanity($ansText, $profanityList, $wholeWordOnly)) {
+            throw new Exception("One of your answers contains inappropriate language. Please revise it.");
+        }
+        $stmtAns->execute([$qnId, $userId, $ansText]);
+    }
+
     $pdo->commit();
     $_SESSION['success'] = "Account created! Welcome to S³, please log in.";
     header("Location: login.php");
     exit;
-
 } catch (Exception $e) {
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    
+
     // IMPROVEMENT: Destroy any images that were uploaded if the database insertion failed
     if (isset($uploadedFiles) && is_array($uploadedFiles)) {
         foreach ($uploadedFiles as $file) {
             if (file_exists($file)) unlink($file);
         }
     }
-    
+
     $_SESSION['old_signup'] = $_POST;
     $_SESSION['error'] = $e->getMessage();
     header("Location: signup.php");

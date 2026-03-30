@@ -57,7 +57,8 @@ try {
 try {
     $conditions = [
         "u.id != ?",
-        "u.id NOT IN (SELECT swiped_id FROM swipes WHERE swiper_id = ?)"
+        "u.id NOT IN (SELECT swiped_id FROM swipes WHERE swiper_id = ?)",
+        "u.id NOT IN (SELECT user_id FROM bans)"
     ];
     $params = [$currentUser, $currentUser];
 
@@ -95,6 +96,14 @@ try {
     ");
     $stmt->execute($params);
     $profiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Sanitize all text data before sending it to JavaScript to prevent DOM-based XSS
+    foreach ($profiles as &$p) {
+        $p['name']       = htmlspecialchars((string)$p['name'], ENT_QUOTES, 'UTF-8');
+        $p['location']   = htmlspecialchars((string)$p['location'], ENT_QUOTES, 'UTF-8');
+        $p['occupation'] = htmlspecialchars((string)$p['occupation'], ENT_QUOTES, 'UTF-8');
+        $p['bio']        = htmlspecialchars((string)$p['bio'], ENT_QUOTES, 'UTF-8');
+    }
+    unset($p); // Break the reference
 } catch (Exception $e) {
     $profiles = [];
 }
@@ -143,7 +152,7 @@ require_once 'includes/header.php';
                     <div class="card-body-content">
                         <h2 class="card-name" id="card-name"></h2>
                         <p class="card-meta" id="card-meta"></p>
-                        <div class="card-tags" id="card-tags" aria-label="Interests"></div>
+                        <div class="card-tags" id="card-tags" role="group" aria-label="Interests"></div>
                         <p class="card-bio"  id="card-bio"></p>
                     </div>
                 </div>
@@ -263,11 +272,20 @@ require_once 'includes/header.php';
     async function recordSwipe(direction) {
         const profile = profiles[currentIndex];
         if (!profile) return false;
+        
+        // Grab the PHP session token securely
+        const csrfToken = "<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>";
+
         try {
             const res  = await fetch('/api/swipe.php', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ swiped_id: profile.id, direction })
+                // Add the CSRF token to the JSON body sent to the server
+                body:    JSON.stringify({ 
+                    swiped_id: profile.id, 
+                    direction: direction,
+                    csrf_token: csrfToken 
+                })
             });
             const data = await res.json();
             return data.match === true;

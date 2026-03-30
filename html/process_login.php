@@ -2,44 +2,91 @@
 session_start();
 
 $errorMsg = '';
-$success = true;
+$success  = true;
 
-$loginId = trim((string) ($_POST['email'] ?? ''));
-$password = (string) ($_POST['password'] ?? '');
+$loginId  = trim((string) ($_POST['email']    ?? ''));
+$password = (string)       ($_POST['password'] ?? '');
 
 $_SESSION['old_login'] = ['email' => $loginId];
 
-if ($loginId === '') {
+$appConfig = require '/var/www/config/app.php';
+
+// 1. reCAPTCHA verification
+$recaptchaSecret   = $appConfig['recaptcha_secret_key'];
+$recaptchaResponse = trim((string) ($_POST['g-recaptcha-response'] ?? ''));
+
+if ($recaptchaResponse === '') {
+    $errorMsg = 'Please complete the reCAPTCHA check.';
+    $success  = false;
+}
+
+if ($success) {
+    $verifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+    $verifyData = http_build_query([
+        'secret'   => $recaptchaSecret,
+        'response' => $recaptchaResponse,
+        'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+    ]);
+
+    $context = stream_context_create([
+        'http' => [
+            'method'  => 'POST',
+            'header'  => 'Content-Type: application/x-www-form-urlencoded',
+            'content' => $verifyData,
+            'timeout' => 5,
+        ],
+    ]);
+
+    $verifyResult = @file_get_contents($verifyUrl, false, $context);
+    $verifyJson   = $verifyResult ? json_decode($verifyResult, true) : null;
+
+    if (!$verifyJson || $verifyJson['success'] !== true) {
+        $errorMsg = 'reCAPTCHA verification failed. Please try again.';
+        $success  = false;
+    }
+}
+
+// 2. Basic input validation 
+
+if ($success && $loginId === '') {
     $errorMsg = 'Please enter your email address or username.';
-    $success = false;
+    $success  = false;
 }
 
 if ($success && $password === '') {
     $errorMsg = 'Password is required.';
-    $success = false;
+    $success  = false;
 }
+
+// 3. Authenticate against database 
 
 if ($success) {
     authenticateUser();
 }
 
-if ($success) {
-    unset($_SESSION['old_login']);
-    $_SESSION['user_id'] = $userId;
-    $_SESSION['user_email'] = $email;
-    $_SESSION['username'] = $username;
-    $_SESSION['first_name'] = $firstName;
-    $_SESSION['last_name'] = $lastName;
-    $_SESSION['role'] = $role;
-    $_SESSION['success'] = 'You are now logged in.';
+// 4. Redirect 
 
-    header('Location: profiles.php');
+if ($success) {
+    // Prevent Session Fixation by issuing a new session ID upon login
+    session_regenerate_id(true);
+    unset($_SESSION['old_login']);
+    $_SESSION['user_id']     = $userId;
+    $_SESSION['user_email']  = $email;
+    $_SESSION['username']    = $username;
+    $_SESSION['first_name']  = $firstName;
+    $_SESSION['last_name']   = $lastName;
+    $_SESSION['role']        = $role;
+    $_SESSION['success']     = 'You are now logged in.';
+
+    header('Location: index.php');
     exit;
 }
 
 $_SESSION['error'] = $errorMsg;
 header('Location: login.php');
 exit;
+
+// Helper functions
 
 function resolveDbConfigPath(): ?string
 {
@@ -66,7 +113,6 @@ function loadPdo(string &$errorMsg): ?PDO
         return null;
     }
 
-    // Use require (not require_once) to avoid stale include-state across entry points.
     require $dbPath;
 
     if (!isset($pdo) || !($pdo instanceof PDO)) {
@@ -94,19 +140,20 @@ function authenticateUser(): void
 
         if (!$row || !password_verify($password, $row['password_hash'])) {
             $errorMsg = 'Login credentials are invalid.';
-            $success = false;
+            $success  = false;
             return;
         }
 
         $firstName = $row['first_name'];
-        $lastName = $row['last_name'];
-        $username = $row['username'];
-        $email = $row['email'];
-        $role = $row['role'];
-        $userId = $row['id'];
+        $lastName  = $row['last_name'];
+        $username  = $row['username'];
+        $email     = $row['email'];
+        $role      = $row['role'];
+        $userId    = $row['id'];
+
     } catch (PDOException $e) {
         $errorMsg = 'Database error: ' . $e->getMessage();
-        $success = false;
+        $success  = false;
     }
 }
 ?>
